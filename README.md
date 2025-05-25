@@ -1,4 +1,4 @@
-#About this repo
+# About this repo
 
 This is a first glimpse of the final project of the subject “Numerical Analysis”.
 
