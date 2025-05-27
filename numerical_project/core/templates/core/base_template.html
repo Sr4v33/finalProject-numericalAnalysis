@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Análisis Numérico{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    {% block extra_head %}{% endblock %} {# Para CSS adicional si lo necesitas #}
+
+    <style>
+        body { padding-top: 60px; /* Ajuste si usas una barra de navegación fija */ }
+        .footer {
+            padding: 1rem 0;
+            margin-top: 3rem;
+            background-color: #f8f9fa;
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'index' %}">Proyecto Numérico</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.view_name == 'index' %}active{% endif %}" href="{% url 'index' %}">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.app_name == 'chapterOne' %}active{% endif %}" href="{% url 'chapterOne:chapter_one_main' %}">Capítulo 1</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.app_name == 'chapterTwo' %}active{% endif %}" href="{% url 'chapterTwo:chapter_two_main' %}">Capítulo 2</a>
+                    </li>
+                    </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" role="main">
+        {% block content %}
+            {% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <span>&copy; {% now "Y" %} - Sebastián Rave/Análisis Numérico.</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_scripts %}{% endblock %} {# Para JS adicional si lo necesitas #}
+</body>
+</html>

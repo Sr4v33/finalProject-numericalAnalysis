@@ -1,0 +1,361 @@
+{% extends "core/base_template.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Capítulo 2" }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .matrix-input-info { font-size: 0.9em; color: #6c757d; }
+    .table-responsive-ch2 { max-height: 300px; overflow-y: auto; }
+    .vector-cell { min-width: 150px; word-break: break-all; }
+
+    /* Estilos para la cuadrícula de matrices */
+    .matrix-grid-container, .vector-grid-container { margin-bottom: 15px; }
+    .matrix-grid table, .vector-grid table { width: auto; /* Ocupa lo necesario */ }
+    .matrix-grid input[type="number"], .vector-grid input[type="number"] {
+        width: 70px; /* Ajusta según necesites */
+        text-align: right;
+        padding: 0.25rem 0.5rem;
+    }
+    .matrix-grid td, .vector-grid td { padding: 2px; }
+    .original-text-inputs { /* Para ocultar los TextAreas originales */
+        display: none; 
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{{ page_title|default:"Capítulo 2: Sistemas de Ecuaciones Lineales" }}</h1>
+    <hr>
+
+    <div class="row">
+        <div class="col-md-5">
+            <h2>Parámetros de Entrada</h2>
+            <div class="mb-3 text-start">
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#helpModalCh2">
+                    <i class="bi bi-question-circle-fill"></i> ¿Necesitas Ayuda?
+                </button>
+            </div>
+
+            {% if form_errors %}
+                <div class="alert alert-danger">
+                    <p><strong>Errores en el formulario:</strong></p>
+                    <ul>
+                        {% for field, errors in form_errors.items %}
+                            <li>{{ field }}: {{ errors|join:", " }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            {% if error_message %}
+                <div class="alert alert-danger">{{ error_message }}</div>
+            {% endif %}
+
+            <form method="post" id="matrixMethodForm">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label for="matrixDimension" class="form-label">Dimensión de la Matriz A (N x N, Max 7):</label>
+                    <input type="number" class="form-control" id="matrixDimension" value="3" min="1" max="7">
+                </div>
+
+                <div class="mb-3">
+                    {{ form.method.label_tag }} {{ form.method }}
+                </div>
+                
+                <label class="form-label">Matriz A:</label>
+                <div id="matrixAGridContainer" class="matrix-grid-container table-responsive-ch2"></div>
+                
+                <label class="form-label">Vector b:</label>
+                <div id="vectorBGridContainer" class="vector-grid-container"></div>
+
+                <label class="form-label">Vector Inicial x0:</label>
+                <div id="vectorX0GridContainer" class="vector-grid-container"></div>
+
+                <div class="original-text-inputs">
+                    <div class="mb-3">
+                        {# {{ form.matrix_A_str.label_tag }} #}  {{ form.matrix_A_str }}
+                        {% if form.matrix_A_str.help_text %}<small class="form-text text-muted matrix-input-info">{{ form.matrix_A_str.help_text }}</small>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {# {{ form.vector_b_str.label_tag }} #}
+                        {{ form.vector_b_str }}
+                        {% if form.vector_b_str.help_text %}<small class="form-text text-muted matrix-input-info">{{ form.vector_b_str.help_text }}</small>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {# {{ form.vector_x0_str.label_tag }} #}
+                        {{ form.vector_x0_str }}
+                        {% if form.vector_x0_str.help_text %}<small class="form-text text-muted matrix-input-info">{{ form.vector_x0_str.help_text }}</small>{% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                     <label for="id_tolerance" class="form-label">Tolerancia:</label>
+                     <input type="number" step="any" name="tolerance" class="form-control" id="id_tolerance" required value="{{ form.tolerance.value|default_if_none:'0.00001' }}">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.max_iterations.id_for_label }}" class="form-label">Máx. Iteraciones:</label>
+                    <input type="number" step="any" name="{{ form.max_iterations.name }}" class="form-control" id="{{ form.max_iterations.id_for_label }}" required value="{{ form.max_iterations.value|default_if_none:'100' }}">
+                </div>
+
+                <div class="mb-3" id="omega_sor_container">
+                    {{ form.omega_sor.label_tag }} {{ form.omega_sor }}
+                    {% if form.omega_sor.help_text %}<small class="form-text text-muted">{{ form.omega_sor.help_text }}</small>{% endif %}
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="calculateButtonCh2" formaction="{% url 'chapterTwo:chapter_two_main' %}">Calcular</button>
+                <button type="submit" class="btn btn-success ms-2" id="compareButtonCh2" formaction="{% url 'chapterTwo:compare_methods_ch2' %}">Comparar Todos</button>
+            </form>
+        </div>
+
+        <div class="col-md-7">
+            <h2>Resultados: {{ method_name|default:"" }}</h2>
+            {% if final_message %}
+                <div class="alert {% if 'Convergió' in final_message %}alert-success{% else %}alert-danger{% endif %}">
+                    <strong>{{ final_message }}</strong>
+                </div>
+            {% endif %}
+            {% if spectral_radius is not None %}
+                <p><strong>Radio Espectral ρ(T):</strong> 
+                    {% if spectral_radius == "inf" or spectral_radius > 1000 %}
+                        Infinito o muy grande (Indica no convergencia)
+                    {% else %}
+                        {{ spectral_radius|floatformat:7 }}
+                    {% endif %}
+                </p>
+                <p><strong>Convergencia Teórica:</strong> {{ convergence_message }}</p>
+            {% endif %}
+
+            {% if results_table %}
+                <h4>Tabla de Iteraciones:</h4>
+                <div class="table-responsive table-responsive-ch2">
+                    <table class="table table-sm table-striped table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Iter.</th>
+                                {% for i in vector_size|rjust:0|slice:"1:" %} {# Genera x1, x2 ... #}
+                                    <th>x<sub>{{ forloop.counter }}</sub></th>
+                                {% endfor %}
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in results_table %}
+                            <tr>
+                                <td>{{ row.Iteración }}</td>
+                                {% for val in row.x_vector %}
+                                    <td>{{ val|floatformat:7 }}</td>
+                                {% endfor %}
+                                <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% elif not error_message and request.method == "POST" and not final_message and not form_errors %}
+                <p class="text-muted">Selecciona un método y presiona "Calcular" o "Comparar".</p>
+            {% else %}
+                <p class="text-muted">Los resultados se mostrarán aquí.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="helpModalCh2" tabindex="-1" aria-labelledby="helpModalCh2Label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalCh2Label">Ayuda para Sistemas de Ecuaciones</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h4>Ingreso de Matrices y Vectores:</h4>
+                <ul>
+                    <li>Selecciona la <strong>dimensión</strong> de la matriz A (NxN) <strong>entre 1 y 7</strong>.</li>
+                    <li>Ingresa los valores de la matriz A y los vectores b y x0 en las <strong>celdas correspondientes</strong>.</li>
+                    <li>Asegúrate de que las <strong>dimensiones</strong> sean consistentes (si A es NxN, b y x0 deben tener N elementos).</li>
+                    <li>No uses variables como 'x' o 'y' dentro de las matrices/vectores, solo números.</li>
+                </ul>
+                <h4>Consideraciones de los Métodos:</h4>
+                <ul>
+                    <li><strong>Diagonal Dominante:</strong> Los métodos iterativos (Jacobi, Gauss-Seidel, SOR) convergen si la matriz A es estrictamente diagonal dominante. El radio espectral te dará una indicación más general.</li>
+                    <li><strong>Radio Espectral ρ(T):</strong>
+                        <ul>
+                            <li>Si ρ(T) < 1, el método converge.</li>
+                            <li>Si ρ(T) ≥ 1, el método diverge o no se garantiza convergencia.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Factor ω (SOR):</strong> Debe estar entre 0 y 2 (0 < ω < 2) para garantizar la posibilidad de convergencia. Un valor óptimo de ω puede acelerar la convergencia.</li>
+                    <li>Verifica que <strong>no haya ceros en la diagonal de A</strong> para Jacobi y Gauss-Seidel, o en la <strong>diagonal de (D-ωL)</strong> para SOR.</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOMContentLoaded disparado. Iniciando script completo para Chapter 2.");
+
+    const dimensionInput = document.getElementById('matrixDimension');
+    const matrixAContainer = document.getElementById('matrixAGridContainer');
+    const vectorBContainer = document.getElementById('vectorBGridContainer');
+    const vectorX0Container = document.getElementById('vectorX0GridContainer');
+
+    // Inputs originales (TextAreas) que se llenarán con JS
+    const matrixAStrInput = document.getElementById('{{ form.matrix_A_str.id_for_label }}');
+    const vectorBStrInput = document.getElementById('{{ form.vector_b_str.id_for_label }}');
+    const vectorX0StrInput = document.getElementById('{{ form.vector_x0_str.id_for_label }}');
+
+    // Verificar si los elementos principales existen para evitar errores posteriores
+    if (!dimensionInput || !matrixAContainer || !vectorBContainer || !vectorX0Container ||
+        !matrixAStrInput || !vectorBStrInput || !vectorX0StrInput) {
+        console.error("Error crítico: Uno o más elementos HTML esenciales para la cuadrícula dinámica no se encontraron. Verifica los IDs en la plantilla y que los campos del formulario de Django (`matrix_A_str`, etc.) se estén renderizando.");
+        // Podrías incluso mostrar un mensaje al usuario aquí
+        // const errorDiv = document.createElement('div');
+        // errorDiv.className = 'alert alert-danger';
+        // errorDiv.textContent = 'Error de configuración de la página. Contacta al administrador.';
+        // document.querySelector('.col-md-6 h2').insertAdjacentElement('afterend', errorDiv);
+        return; // Detener la ejecución del script si falta algo fundamental
+    }
+
+    function createGridInputs(dimension) {
+        dimension = parseInt(dimension);
+        if (isNaN(dimension) || dimension < 1 || dimension > 7) {
+            dimension = 3; // Default si el valor es inválido
+            if (dimensionInput) dimensionInput.value = dimension;
+        }
+        console.log("Creando cuadrículas para dimensión:", dimension);
+
+        // Matriz A
+        let tableAHTML = '<table><tbody>';
+        for (let i = 0; i < dimension; i++) {
+            tableAHTML += '<tr>';
+            for (let j = 0; j < dimension; j++) {
+                tableAHTML += `<td><input type="number" class="form-control form-control-sm matrix-a-cell" id="a_${i}_${j}" value="0" step="any"></td>`;
+            }
+            tableAHTML += '</tr>';
+        }
+        tableAHTML += '</tbody></table>';
+        if (matrixAContainer) matrixAContainer.innerHTML = tableAHTML;
+
+        // Vector b
+        let tableBHTML = '<table><tbody><tr>';
+        for (let i = 0; i < dimension; i++) {
+            tableBHTML += `<td><input type="number" class="form-control form-control-sm vector-b-cell" id="b_${i}" value="0" step="any"></td>`;
+        }
+        tableBHTML += '</tr></tbody></table>';
+        if (vectorBContainer) vectorBContainer.innerHTML = tableBHTML;
+
+        // Vector x0
+        let tableX0HTML = '<table><tbody><tr>';
+        for (let i = 0; i < dimension; i++) {
+            tableX0HTML += `<td><input type="number" class="form-control form-control-sm vector-x0-cell" id="x0_${i}" value="0" step="any"></td>`;
+        }
+        tableX0HTML += '</tr></tbody></table>';
+        if (vectorX0Container) {
+             vectorX0Container.innerHTML = tableX0HTML;
+        } else {
+            console.error("CRITICAL ERROR: vectorX0Container es null DENTRO de createGridInputs, esto no debería pasar si la verificación inicial pasó.");
+        }
+    }
+
+    function prepareFormData() {
+        console.log("--- prepareFormData INICIO ---");
+        const dimension = parseInt(dimensionInput.value);
+        if (isNaN(dimension) || dimension < 1 || dimension > 7) { // Validar dimensión aquí también
+            console.error("Dimensión inválida en prepareFormData. No se poblarán los campos ocultos.");
+            // Opcionalmente, podrías mostrar un error al usuario y prevenir el envío
+            // alert("La dimensión de la matriz es inválida. Por favor, corrígela.");
+            return false; // Indica que hubo un problema
+        }
+        
+        let matrixA = [];
+        for (let i = 0; i < dimension; i++) {
+            let row = [];
+            for (let j = 0; j < dimension; j++) {
+                const cell = document.getElementById(`a_${i}_${j}`);
+                // Si la celda no existe (por si acaso), o si está vacía, usa 0.
+                row.push(parseFloat(cell ? cell.value : "0") || 0); 
+            }
+            matrixA.push(row);
+        }
+        if (matrixAStrInput) matrixAStrInput.value = JSON.stringify(matrixA);
+
+        let vectorB = [];
+        for (let i = 0; i < dimension; i++) {
+            const cell = document.getElementById(`b_${i}`);
+            vectorB.push(parseFloat(cell ? cell.value : "0") || 0);
+        }
+        if (vectorBStrInput) vectorBStrInput.value = JSON.stringify(vectorB);
+
+        let vectorX0 = [];
+        for (let i = 0; i < dimension; i++) {
+            const cell = document.getElementById(`x0_${i}`);
+            vectorX0.push(parseFloat(cell ? cell.value : "0") || 0);
+        }
+        if (vectorX0StrInput) vectorX0StrInput.value = JSON.stringify(vectorX0);
+    
+        return true; 
+    }
+
+    // Event listener para el cambio de dimensión
+    if (dimensionInput) {
+        dimensionInput.addEventListener('change', function() { createGridInputs(this.value); });
+        dimensionInput.addEventListener('keyup', function() { // También al teclear para una respuesta más rápida
+            // Pequeño debounce para no sobrecargar en keyup
+            clearTimeout(this.keyUpTimer);
+            this.keyUpTimer = setTimeout(() => createGridInputs(this.value), 300);
+        });
+        createGridInputs(dimensionInput.value); // Crear cuadrícula inicial al cargar la página
+    } else {
+        console.error("Elemento 'matrixDimension' no encontrado. Las cuadrículas dinámicas no funcionarán.");
+    }
+
+    // Interceptar el envío del formulario para poblar los campos de texto
+    const form = document.getElementById('matrixMethodForm');
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            console.log("Formulario 'matrixMethodForm' detectó submit. Llamando a prepareFormData...");
+            if (!prepareFormData()) { // Si prepareFormData indica un error
+                console.error("prepareFormData() devolvió false. Previniendo envío del formulario.");
+                event.preventDefault(); // Detener el envío del formulario
+            }
+            // Si prepareFormData() devuelve true, el envío continúa normalmente
+            console.log("prepareFormData() completado. El formulario procederá a enviarse.");
+        });
+    } else {
+        console.error("Formulario 'matrixMethodForm' no encontrado. El poblamiento de datos no funcionará.");
+    }
+
+    // Mostrar/ocultar campo omega para SOR
+    const methodSelect = document.getElementById('{{ form.method.id_for_label }}'); 
+    const omegaFieldContainer = document.getElementById('omega_sor_container');
+
+    function toggleOmegaField() {
+        if (!methodSelect || !omegaFieldContainer) return; // Salir si los elementos no existen
+        if (methodSelect.value === 'sor' || methodSelect.value === 'compare_all_ch2') {
+            omegaFieldContainer.style.display = 'block';
+        } else {
+            omegaFieldContainer.style.display = 'none';
+        }
+    }
+
+    if (methodSelect && omegaFieldContainer) {
+        methodSelect.addEventListener('change', toggleOmegaField);
+        toggleOmegaField(); // Llamar para establecer el estado inicial correcto
+    } else {
+        if (!methodSelect) console.error("Elemento 'methodSelect' (ID: {{ form.method.id_for_label }}) no encontrado.");
+        if (!omegaFieldContainer) console.error("Elemento 'omega_sor_container' no encontrado.");
+    }
+});
+</script>
+{% endblock %}

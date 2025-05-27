@@ -7,6 +7,7 @@ METHOD_CHOICES = [
     ('newton', 'Newton'),
     ('secante', 'Secante'),
     ('newton_modificado', 'Newton Modificado'),
+    ('compare_all', 'Comparar Todos los Métodos'),
 ]
 
 class NumericalMethodForm(forms.Form):

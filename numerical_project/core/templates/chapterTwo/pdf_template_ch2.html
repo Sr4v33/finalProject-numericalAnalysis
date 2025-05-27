@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe Comparación - Cap 2</title>
+    <style>
+        @page { size: a4 portrait; margin: 1.5cm; }
+        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 9pt; line-height: 1.2; }
+        h1, h2, h3 { color: #333; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin-bottom: 8px; }
+        h1 { font-size: 16pt; } h2 { font-size: 12pt; } h3 { font-size: 10pt; border-bottom-style: dotted; }
+        .alert { padding: 8px; margin-bottom: 10px; border: 1px solid transparent; border-radius: 4px; }
+        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+        .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+        .card { border: 1px solid #ddd; margin-bottom: 10px; padding: 8px; }
+        .card-header { font-weight: bold; background-color: #f5f5f5; padding: 4px; margin: -8px -8px 8px -8px; border-bottom: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8pt;}
+        th, td { border: 1px solid #ccc; padding: 3px; text-align: left; word-break: break-all;}
+        th { background-color: #eee; }
+        code { font-family: monospace; background-color: #f0f0f0; padding: 1px 3px; border-radius: 2px; }
+        ul { padding-left: 20px; margin-bottom: 8px; }
+        .text-success { color: #155724; } .text-danger { color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Informe Comparación - Sistemas Lineales</h1> <hr>
+    {% if all_method_outputs %}
+        <h2>Parámetros de Entrada</h2>
+        <p><strong>Matriz A:</strong> <code>{{ input_data.A_str }}</code></p>
+        <p><strong>Vector b:</strong> <code>{{ input_data.b_str }}</code></p>
+        <p><strong>Vector x0:</strong> <code>{{ input_data.x0_str }}</code></p>
+        <p><strong>Tolerancia:</strong> {{ input_data.tol }} | <strong>Iter. Máx:</strong> {{ input_data.niter }} | <strong>Omega (SOR):</strong> {{ input_data.omega|default:"N/A" }}</p>
+        <hr>
+        <h2>Resultados Generales</h2>
+        {% if best_method %}<div class="alert alert-success"><strong>Mejor Método:</strong> {{ best_method }} ({{ min_iter }} iteraciones).</div>
+        {% else %}<div class="alert alert-warning">Ningún método destacó.</div>{% endif %}
+        <hr>
+        <h2>Resultados por Método</h2>
+        {% for name, data_tuple in all_method_outputs.items %}
+            {% with results=data_tuple.0 message=data_tuple.1 spectral_radius=data_tuple.2 convergence_info=data_tuple.3 iterations=data_tuple.4 %}
+            <div class="card">
+                <div class="card-header"><h3>{{ name }}</h3></div>
+                <p><strong>Mensaje Final:</strong> <span class="{% if 'Convergió' in message %}text-success{% else %}text-danger{% endif %}">{{ message }}</span></p>
+                <p><strong>Radio Espectral ρ(T):</strong> {% if spectral_radius == "inf" or spectral_radius > 10000 %} Infinito/Muy Grande {% else %} {{ spectral_radius|floatformat:7 }} {% endif %}</p>
+                <p><strong>Convergencia Teórica:</strong> {{ convergence_info }}</p>
+                <p><strong>Iteraciones:</strong> {{ iterations }}</p>
+                {% if results %}
+                    <h5>Tabla de Iteraciones:</h5>
+                    <table><thead><tr><th>Iter.</th>
+                        {% for i in vector_size|rjust:0|slice:"1:" %}<th>x<sub>{{ forloop.counter }}</sub></th>{% endfor %}
+                        <th>Error</th></tr></thead>
+                        <tbody>
+                        {% for row in results %}<tr><td>{{ row.Iteración }}</td>
+                            {% for val in row.x_vector %}<td>{{ val|floatformat:7 }}</td>{% endfor %}
+                            <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td></tr>
+                        {% endfor %}</tbody></table>
+                {% endif %}</div>
+            {% endwith %}{% endfor %}
+    {% else %}<p>No hay datos.</p>{% endif %}
+</body>
+</html>

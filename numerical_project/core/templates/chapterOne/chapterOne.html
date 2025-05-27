@@ -1,164 +1,269 @@
+{% extends "core/base_template.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Capítulo 1 - Métodos Numéricos</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+{% block title %}Capítulo 1 - Solución de Ecuaciones{% endblock %}
+
+{% block extra_head %}
+    {# Estilos específicos para esta página, si los necesitas #}
     <style>
-        .parameter-field { display: none; } /* Ocultar campos por defecto */
+        .parameter-field { display: none; } 
         .table-responsive { max-height: 400px; }
         th { position: sticky; top: 0; background-color: #f8f9fa; }
+        .comparison-alert { display: none; }
+        /* Ajuste para los botones de graficar */
+        .input-group .btn {
+            margin-left: 5px;
+        }
     </style>
-</head>
-<body>
-    <div class="container mt-5">
-        <h1 class="mb-4">Análisis Numérico - Solución de Ecuaciones</h1>
-        <hr>
+{% endblock %}
 
-        <div class="row">
-            <div class="col-md-5">
-                <h2>Parámetros de Entrada</h2>
-                <form method="post" id="numericalMethodForm">
-                    {% csrf_token %}
-                    
-                    <div class="mb-3">
-                        <label for="id_function_f" class="form-label">Función f(x):</label>
-                        <input type="text" name="function_f" class="form-control" id="id_function_f" placeholder="Ej: x**3 - cos(x)" required value="{{ form.function_f.value|default_if_none:'' }}">
-                        <small class="form-text text-muted">Usa sintaxis Python (**, exp(), cos(), sin(), log()).</small>
-                    </div>
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{{ page_title|default:"Capítulo 1: Sistemas de Ecuaciones No Lineales" }}</h1>
+    <hr>
 
-                    <div class="mb-3 parameter-field" data-method="punto_fijo">
-                        <label for="id_function_g" class="form-label">Función g(x) (Punto Fijo):</label>
-                        <input type="text" name="function_g" class="form-control" id="id_function_g" placeholder="Ej: (cos(x))**(1/3)" value="{{ form.function_g.value|default_if_none:'' }}">
-                    </div>
+    <div class="row">
+        <div class="col-md-5">
+            <h2>Parámetros de Entrada</h2>
 
-                    <div class="mb-3">
-                        <label for="id_method" class="form-label">Método:</label>
-                        <select name="method" class="form-select" id="id_method" required>
-                            <option value="">Selecciona un método...</option>
-                            <option value="biseccion" {% if form.method.value == 'biseccion' %}selected{% endif %}>Bisección</option>
-                            <option value="regla_falsa" {% if form.method.value == 'regla_falsa' %}selected{% endif %}>Regla Falsa</option>
-                            <option value="punto_fijo" {% if form.method.value == 'punto_fijo' %}selected{% endif %}>Punto Fijo</option>
-                            <option value="newton" {% if form.method.value == 'newton' %}selected{% endif %}>Newton</option>
-                            <option value="secante" {% if form.method.value == 'secante' %}selected{% endif %}>Secante</option>
-                            <option value="newton_modificado" {% if form.method.value == 'newton_modificado' %}selected{% endif %}>Newton Modificado</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3 parameter-field" data-method="biseccion regla_falsa newton secante newton_modificado punto_fijo">
-                         <label for="id_x0_xi" class="form-label" id="label_x0_xi">Xi / X0:</label>
-                         <input type="number" step="any" name="x0_xi" class="form-control" id="id_x0_xi" value="{{ form.x0_xi.value|default_if_none:'' }}">
-                    </div>
-
-                    <div class="mb-3 parameter-field" data-method="biseccion regla_falsa secante">
-                         <label for="id_xs_x1" class="form-label" id="label_xs_x1">Xs / X1:</label>
-                         <input type="number" step="any" name="xs_x1" class="form-control" id="id_xs_x1" value="{{ form.xs_x1.value|default_if_none:'' }}">
-                    </div>
-                    
-                    <div class="mb-3">
-                         <label for="id_tolerance" class="form-label">Tolerancia:</label>
-                         <input type="number" step="any" name="tolerance" class="form-control" id="id_tolerance" required value="{{ form.tolerance.value|default_if_none:'0.00001' }}">
-                    </div>
-
-                    <div class="mb-3">
-                         <label for="id_n_iterations" class="form-label">Máx. Iteraciones:</label>
-                         <input type="number" name="n_iterations" class="form-control" id="id_n_iterations" required value="{{ form.n_iterations.value|default_if_none:'100' }}">
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Calcular</button>
-                </form>
+            <div class="mb-3 text-start">
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#helpModal">
+                    <i class="bi bi-question-circle-fill"></i> ¿Necesitas Ayuda?
+                </button>
             </div>
 
-            <div class="col-md-7">
-                <h2>Resultados</h2>
-                {% if message %}
-                    <div class="alert {% if 'raíz' in message or 'aprox.' in message %}alert-success{% else %}alert-warning{% endif %}" role="alert">
-                        <strong>{{ message }}</strong>
+            <form method="post" id="numericalMethodForm">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="id_function_f" class="form-label">Función f(x):</label>
+                    <div class="input-group">
+                        <input type="text" name="function_f" class="form-control" id="id_function_f" placeholder="Ej: x**3 - cos(x)" required value="{{ form.function_f.value|default_if_none:'' }}">
+                        <button type="button" class="btn btn-outline-secondary" id="graphButton" style="display: none;">
+                            <i class="bi bi-graph-up"></i> Graficar
+                        </button>
                     </div>
-                {% endif %}
+                    <small class="form-text text-muted">Usa la sintaxis indicada en "¿Necesitas Ayuda?".</small>
+                </div>
 
-                {% if results %}
-                    <div class="table-responsive">
-                        <table class="table table-striped table-bordered table-sm">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Iteración</th>
-                                    <th>xi</th>
-                                    <th>xs</th>
-                                    <th>xm</th>
-                                    <th>f(xm) / g(xn)</th>
-                                    <th>Error</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                              {% for row in results %}
-                              <tr>
-                                  <td>{{ row.Iteración }}</td>
-                                  <td>{{ row.xi|default:"---" }}</td>
-                                  <td>{{ row.xs|default:"---" }}</td>
-                                  <td>{{ row.xm|default:"---" }}</td>
-                                  <td>{{ row.f_xm|default:"---" }}</td> 
-                                  <td>{{ row.Error|default:"---" }}</td> 
-                              </tr>
-                              {% endfor %}
-                          </tbody>
-                        </table>
+                <div class="mb-3 parameter-field" data-method="punto_fijo compare_all">
+                    <label for="id_function_g" class="form-label">Función g(x):</label>
+                     <div class="input-group">
+                        <input type="text" name="function_g" class="form-control" id="id_function_g" placeholder="Ej: (cos(x))**(1/3)" value="{{ form.function_g.value|default_if_none:'' }}">
+                        <button type="button" class="btn btn-outline-secondary" id="graphButton2" style="display: none;">
+                            <i class="bi bi-graph-up"></i> Graficar
+                        </button>
                     </div>
-                {% else %}
-                    <p class="text-muted">Los resultados se mostrarán aquí.</p>
-                {% endif %}
+                    <small class="form-text text-muted">Necesario para Punto Fijo y ejecutar Comparación.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_method" class="form-label">Método:</label>
+                    <select name="method" class="form-select" id="id_method" required>
+                        <option value="">Selecciona un método...</option>
+                        <option value="biseccion" {% if form.method.value == 'biseccion' %}selected{% endif %}>Bisección</option>
+                        <option value="regla_falsa" {% if form.method.value == 'regla_falsa' %}selected{% endif %}>Regla Falsa</option>
+                        <option value="punto_fijo" {% if form.method.value == 'punto_fijo' %}selected{% endif %}>Punto Fijo</option>
+                        <option value="newton" {% if form.method.value == 'newton' %}selected{% endif %}>Newton</option>
+                        <option value="secante" {% if form.method.value == 'secante' %}selected{% endif %}>Secante</option>
+                        <option value="newton_modificado" {% if form.method.value == 'newton_modificado' %}selected{% endif %}>Newton Modificado</option>
+                        <option value="compare_all" {% if form.method.value == 'compare_all' %}selected{% endif %}>Comparar Todos los Métodos</option>
+                    </select>
+                </div>
+
+                <div class="alert alert-info comparison-alert" role="alert">
+                  Por favor, asegúrate de llenar <strong>todos</strong> los campos (f(x), g(x), Xi/X0 y Xs/X1) para una comparación completa.
+                  <br>
+                  En caso de <strong>no querer evaluar el método Punto Fijo</strong>, puedes dejar el campo g(x) vacío.
+                </div>
+
+                <div class="mb-3 parameter-field" data-method="biseccion regla_falsa newton secante newton_modificado punto_fijo compare_all">
+                     <label for="id_x0_xi" class="form-label" id="label_x0_xi">Xi / X0:</label>
+                     <input type="number" step="any" name="x0_xi" class="form-control" id="id_x0_xi" value="{{ form.x0_xi.value|default_if_none:'' }}">
+                </div>
+
+                <div class="mb-3 parameter-field" data-method="biseccion regla_falsa secante compare_all">
+                     <label for="id_xs_x1" class="form-label" id="label_xs_x1">Xs / X1:</label>
+                     <input type="number" step="any" name="xs_x1" class="form-control" id="id_xs_x1" value="{{ form.xs_x1.value|default_if_none:'' }}">
+                </div>
+                
+                <div class="mb-3">
+                     <label for="id_tolerance" class="form-label">Tolerancia:</label>
+                     <input type="number" step="any" name="tolerance" class="form-control" id="id_tolerance" required value="{{ form.tolerance.value|default_if_none:'0.00001' }}">
+                </div>
+
+                <div class="mb-3">
+                     <label for="id_n_iterations" class="form-label">Máx. Iteraciones:</label>
+                     <input type="number" name="n_iterations" class="form-control" id="id_n_iterations" required value="{{ form.n_iterations.value|default_if_none:'100' }}">
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="calculateButton">Calcular</button>
+                <button type="submit" formaction="{% url 'chapterOne:compare_methods' %}" class="btn btn-success ms-2" id="compareButton">
+                    Comparar Todos
+                </button>
+            </form>
+        </div>
+        <div class="col-md-7">
+            <h2>Resultados: </h2>
+            {% if message %}
+                <div class="alert {% if 'raíz' in message or 'aprox.' in message %}alert-success{% else %}alert-warning{% endif %}" role="alert">
+                    <strong>{{ message }}</strong>
+                </div>
+            {% endif %}
+
+            {% if results %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Iteración</th>
+                                <th>xi</th>
+                                <th>xs</th>
+                                <th>xm</th>
+                                <th>f(xm) / g(xn)</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in results %}
+                          <tr>
+                              <td>{{ row.Iteración }}</td>
+                              <td>{{ row.xi|floatformat:10|default:"---" }}</td> {# Añadido floatformat y default --- #}
+                              <td>{{ row.xs|floatformat:10|default:"---" }}</td> {# Añadido floatformat y default --- #}
+                              <td>{{ row.xm|floatformat:10|default:"---" }}</td> {# Añadido floatformat y default --- #}
+                              <td>{{ row.f_xm|floatformat:"2e"|default:"---" }}</td> {# Formato científico y default --- #}
+                              <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td> {# Formato científico y default --- #}
+                          </tr>
+                          {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">Los resultados se mostrarán aquí.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalLabel">Guía de Uso y Sintaxis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h4>Consideraciones Generales</h4>
+                <ul>
+                    <li>Las funciones deben ser continuas y, para algunos métodos (Newton), diferenciables. <strong>Verifícalo visualmente ingresando la función y presionando en el botón "Graficar".</strong></li>
+                    <li>Asegúrate de que la función tenga una raíz en el intervalo o cerca del punto inicial.</li>
+                    <li>El valor inicial (X0, Xi) es crucial para la convergencia, especialmente en métodos abiertos.</li>
+                    <li>La tolerancia debe ser un valor positivo pequeño (ej. 1e-7).</li>
+                    <li>El número máximo de iteraciones debe ser un entero positivo.</li>
+                </ul>
+
+                <h4>Consideraciones Específicas (Métodos Cerrados)</h4>
+                 <ul>
+                    <li><strong>Bisección y Regla Falsa:</strong> La función debe tener signos diferentes en los extremos del intervalo (f(a) * f(b) < 0).</li>
+                    <li>El valor de 'a' (Xi) debe ser menor que 'b' (Xs).</li>
+                    <li>La función debe ser continua en el intervalo [a, b].</li>
+                </ul>
+                <hr>
+                <h2>¿No sabes cómo ingresar funciones?</h2>
+                <p>Usa la sintaxis de Python y `numpy`/`sympy`. Aquí tienes una guía:</p>
+                <table class="table table-bordered table-striped table-sm">
+                    <thead><tr><th>Caracter o Función</th><th>Manera de ingresarlo (ejemplos)</th></tr></thead>
+                    <tbody>
+                        <tr><td>Seno, Coseno, Tangente</td><td><code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code></td></tr>
+                        <tr><td>Cosecante, Secante, Cotangente</td><td><code>1/sin(x)</code>, <code>1/cos(x)</code>, <code>1/tan(x)</code></td></tr>
+                        <tr><td>Arcoseno, Arcocoseno, Arcotangente</td><td><code>asin(x)</code>, <code>acos(x)</code>, <code>atan(x)</code></td></tr>
+                        <tr><td>Funciones hiperbólicas</td><td><code>sinh(x)</code>, <code>cosh(x)</code>, <code>tanh(x)</code></td></tr>
+                        <tr><td>Funciones hiperbólicas inversas</td><td><code>asinh(x)</code>, <code>acosh(x)</code>, <code>atanh(x)</code></td></tr>
+                        <tr><td>Número e, Pi (π), Exponencial</td><td><code>exp(1)</code>, <code>pi</code>, <code>exp(x)</code></td></tr>
+                        <tr><td>Logaritmo Natural, Logaritmo base 10</td><td><code>log(x)</code>, <code>log10(x)</code></td></tr>
+                        <tr><td>Logaritmo base N</td><td><code>log(x, N)</code> (Ej: <code>log(x, 2)</code>)</td></tr>
+                        <tr><td>Raíz cuadrada, Potencia N, Raíz N</td><td><code>sqrt(x)</code>, <code>x**N</code>, <code>x**(1/N)</code></td></tr>
+                        <tr><td>Valor absoluto</td><td><code>abs(x)</code></td></tr>
+                        <tr><td>Multiplicación implícita</td><td><strong>¡Importante!</strong> Usa <code>*</code>. Ej: <code>3*x</code>.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% block extra_scripts %}
     <script>
+    // Script para campos dinámicos del método
         document.getElementById('id_method').addEventListener('change', function() {
             const selectedMethod = this.value;
             const allFields = document.querySelectorAll('.parameter-field');
             const label_x0_xi = document.getElementById('label_x0_xi');
             const label_xs_x1 = document.getElementById('label_xs_x1');
+            const comparisonAlert = document.querySelector('.comparison-alert');
+
+            comparisonAlert.style.display = (selectedMethod === 'compare_all') ? 'block' : 'none';
 
             allFields.forEach(field => {
                 const methods = field.getAttribute('data-method').split(' ');
+                const input = field.querySelector('input');
+
                 if (methods.includes(selectedMethod)) {
                     field.style.display = 'block';
-                    // Activar 'required' si es necesario (ejemplo para x0_xi)
-                    const input = field.querySelector('input');
-                    if (input && (selectedMethod !== 'punto_fijo' || input.id === 'id_x0_xi')) {
-                         input.required = true;
+                    if (input && selectedMethod !== 'compare_all') {
+                        input.required = (selectedMethod !== 'punto_fijo' || input.id === 'id_x0_xi' || input.id === 'id_function_g');
+                    } else if (input) {
+                        input.required = false; 
                     }
-                    if (input && selectedMethod === 'punto_fijo' && input.id === 'id_function_g') {
-                        input.required = true;
-                    }
-
                 } else {
                     field.style.display = 'none';
-                    // Desactivar 'required'
-                     const input = field.querySelector('input');
-                    if (input) {
-                         input.required = false;
-                    }
+                    if (input) { input.required = false; }
                 }
             });
 
             // Ajustar etiquetas
-            if (selectedMethod === 'secante') {
-                label_x0_xi.textContent = 'X0:';
-                label_xs_x1.textContent = 'X1:';
-            } else if (selectedMethod === 'punto_fijo') {
-                 label_x0_xi.textContent = 'X0:';
-            }
-             else {
-                label_x0_xi.textContent = 'Xi:';
-                label_xs_x1.textContent = 'Xs:';
-            }
+            if (selectedMethod === 'secante') { label_x0_xi.textContent = 'X0:'; label_xs_x1.textContent = 'X1:'; } 
+            else if (selectedMethod === 'punto_fijo') { label_x0_xi.textContent = 'X0:'; } 
+            else if (selectedMethod === 'compare_all') { label_x0_xi.textContent = 'Xi / X0:'; label_xs_x1.textContent = 'Xs / X1:'; } 
+            else { label_x0_xi.textContent = 'Xi:'; label_xs_x1.textContent = 'Xs:'; }
         });
 
-        // Disparar el evento 'change' al cargar la página para reflejar la selección actual
+        // --- SCRIPT PARA BOTONES DE GRÁFICO ---
+        const setupGraphButton = (inputId, buttonId) => {
+            const functionInput = document.getElementById(inputId);
+            const graphButton = document.getElementById(buttonId);
+            const graphUrl = "{% url 'chapterOne:graph_function' %}"; 
+
+            if (!functionInput || !graphButton) return; // Salir si no existen
+
+            functionInput.addEventListener('input', function() {
+                graphButton.style.display = this.value.trim() ? 'inline-block' : 'none';
+            });
+
+            graphButton.addEventListener('click', function() {
+                const functionString = functionInput.value.trim();
+                if (functionString) {
+                    const encodedFunction = encodeURIComponent(functionString);
+                    const finalUrl = `${graphUrl}?function=${encodedFunction}`;
+                    window.open(finalUrl, '_blank');
+                } else {
+                    alert("Por favor, ingresa una función para graficar.");
+                }
+            });
+            functionInput.dispatchEvent(new Event('input')); // Llamar al cargar
+        };
+
+        setupGraphButton('id_function_f', 'graphButton');
+        setupGraphButton('id_function_g', 'graphButton2');
+        // --- FIN SCRIPT GRÁFICO ---
+
+        // Disparar evento change al cargar
         document.getElementById('id_method').dispatchEvent(new Event('change'));
+
     </script>
-</body>
-</html>
+{% endblock %}

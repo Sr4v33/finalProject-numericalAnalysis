@@ -1,0 +1,121 @@
+{% extends "core/base_template.html" %} {# O usa tu plantilla base si tienes una #}
+
+{% block title %}Comparación de Métodos{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Informe de Comparación de Métodos</h1>
+    <hr>
+
+{# --- AÑADIR ESTE BLOQUE --- #}
+    {% if form_errors %}
+        <div class="alert alert-danger">
+            <h4>Hubo errores al procesar la entrada:</h4>
+            <ul>
+            {% for field, errors in form_errors.items %}
+                <li><strong>{{ field }}:</strong> {{ errors|join:", " }}</li>
+            {% endfor %}
+            </ul>
+            <p>Por favor, <a href="{% url 'chapterOne:chapter_one_main' %}">vuelve atrás</a> y corrige los datos.</p>
+        </div>
+    {% endif %}
+    {# --- FIN AÑADIR --- #}
+
+    {% if global_error %}
+        <div class="alert alert-danger">{{ global_error }}</div>
+    {% elif all_results %}
+        <h2>Parámetros de Entrada</h2>
+        <ul>
+            <li><strong>Función f(x):</strong> {{ input_data.function_f }}</li>
+            <li><strong>Función g(x):</strong> {{ input_data.function_g }}</li>
+            <li><strong>Xi / X0:</strong> {{ input_data.x0_xi }}</li>
+            <li><strong>Xs / X1:</strong> {{ input_data.xs_x1 }}</li>
+            <li><strong>Tolerancia:</strong> {{ input_data.tolerance }}</li>
+            <li><strong>Iteraciones Máx:</strong> {{ input_data.n_iterations }}</li>
+        </ul>
+        <hr>
+
+        <h2>Resultados Generales</h2>
+        {% if best_method %}
+            <div class="alert alert-success">
+                <strong>Mejor Método Identificado:</strong> {{ best_method }} 
+                (convergió en {{ min_iter }} iteraciones).
+            </div>
+        {% else %}
+            <div class="alert alert-warning">
+                Ninguno de los métodos pudo converger con los parámetros dados.
+            </div>
+        {% endif %}
+
+        <div class="my-4">
+             <a href="{% url 'chapterOne:download_pdf_report' %}" class="btn btn-danger" target="_blank">
+                <i class="bi bi-file-pdf-fill"></i> Descargar Informe en PDF
+            </a>
+        </div>
+        <hr>
+
+        <h2>Resultados por Método</h2>
+        {% for name, data in all_results.items %}
+            <div class="card mb-4 {% if name == best_method %}border-success{% endif %}">
+                <div class="card-header {% if name == best_method %}bg-success text-white{% endif %}">
+                    <h3>{{ name }}</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>Mensaje:</strong> <span class="{% if data.success %}text-success{% else %}text-danger{% endif %}">{{ data.message }}</span></p>
+                    <p><strong>Iteraciones:</strong> {{ data.iterations }}</p>
+                    <p><strong>Raíz Aprox:</strong> {{ data.root|floatformat:10 }}</p>
+                    <p><strong>Error Final:</strong> {{ data.error|floatformat:"2e" }}</p>
+
+                    {% if data.results %}
+                        <h5>Tabla de Iteraciones (Primeras 5 y Última):</h5>
+                        <div class="table-responsive" style="max-height: 200px;">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Iteración</th>
+                                        <th>xi</th>
+                                        <th>xs</th>
+                                        <th>xm</th>
+                                        <th>f(xm)</th>
+                                        <th>Error</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in data.results|slice:":5" %}
+                                    <tr>
+                                        <td>{{ row.Iteración }}</td>
+                                        <td>{{ row.xi|floatformat:10 }}</td>
+                                        <td>{{ row.xs|floatformat:10|default:"---" }}</td>
+                                        <td>{{ row.xm|floatformat:10|default:"---" }}</td>
+                                        <td>{{ row.f_xm|floatformat:"1e"|default:"---" }}</td>
+                                        <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if data.results|length > 5 %}
+                                    <tr><td colspan="6" class="text-center">...</td></tr>
+                                    {% with last_row=data.results|last %}
+                                    <tr>
+                                        <td>{{ last_row.Iteración }}</td>
+                                        <td>{{ last_row.xi|floatformat:10 }}</td>
+                                        <td>{{ last_row.xs|floatformat:10|default:"---" }}</td>
+                                        <td>{{ last_row.xm|floatformat:10|default:"---" }}</td>
+                                        <td>{{ last_row.f_xm|floatformat:"1e"|default:"---" }}</td>
+                                        <td>{{ last_row.Error|floatformat:"2e"|default:"---" }}</td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>No se generaron iteraciones.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+
+    {% else %}
+        <p>No se han procesado datos. Por favor, vuelve a la <a href="{% url 'chapterOne:chapter_one_main' %}">página principal</a> e intenta de nuevo.</p>
+    {% endif %}
+</div>
+{% endblock %}

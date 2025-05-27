@@ -14,10 +14,7 @@ def parse_function(function_string, variable='x'):
         # Definir el símbolo
         x = sympy.symbols(variable)
         
-        # Mapeo de funciones comunes a SymPy (puedes expandir esto)
-        # SymPy generalmente reconoce 'exp', 'cos', 'sin', 'log', 'sqrt'
-        # pero lambdify se encargará de mapearlos a numpy.
-        
+
         # Convertir la cadena a una expresión SymPy
         expr = sympy.sympify(function_string)
         
@@ -59,7 +56,7 @@ def get_derivatives(function_string, variable='x'):
     except (sympy.SympifyError, TypeError, SyntaxError) as e:
         return None, None, None, f"Error al derivar la función '{function_string}': {e}"
 
-# --- Funciones de utilidad (si las necesitas, como display_table) ---
+
 
 def display_table(results):
     """

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe de Comparación</title>
+    <style>
+        @page { size: a4 portrait; margin: 1.5cm; }
+        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 10pt; }
+        h1, h2, h3 { color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
+        h1 { font-size: 18pt; }
+        h2 { font-size: 14pt; }
+        h3 { font-size: 12pt; border-bottom: 1px dotted #eee; }
+        .container { width: 100%; }
+        .alert { padding: 10px; margin-bottom: 15px; border: 1px solid transparent; border-radius: 4px; }
+        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+        .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+        .card { border: 1px solid #ddd; margin-bottom: 15px; padding: 10px; }
+        .card-header { font-weight: bold; background-color: #f5f5f5; padding: 5px; margin: -10px -10px 10px -10px; border-bottom: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 8pt;}
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: left; }
+        th { background-color: #eee; }
+        ul { list-style: none; padding-left: 0; }
+        li { margin-bottom: 5px; }
+        .text-success { color: green; }
+        .text-danger { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Informe de Comparación de Métodos</h1>
+        <hr>
+
+        {% if all_results %}
+            <h2>Parámetros de Entrada</h2>
+            <ul>
+                <li><strong>Función f(x):</strong> {{ input_data.function_f }}</li>
+                <li><strong>Xi / X0:</strong> {{ input_data.x0_xi }}</li>
+                <li><strong>Xs / X1:</strong> {{ input_data.xs_x1 }}</li>
+                <li><strong>Tolerancia:</strong> {{ input_data.tolerance }}</li>
+                <li><strong>Iteraciones Máx:</strong> {{ input_data.n_iterations }}</li>
+            </ul>
+            <hr>
+
+            <h2>Resultados Generales</h2>
+            {% if best_method %}
+                <div class="alert alert-success">
+                    <strong>Mejor Método:</strong> {{ best_method }} ({{ min_iter }} iteraciones).
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    Ningún método convergió.
+                </div>
+            {% endif %}
+            <hr>
+
+            <h2>Resultados por Método</h2>
+            {% for name, data in all_results.items %}
+                <div class="card">
+                    <div class="card-header"><h3>{{ name }}</h3></div>
+                    <p><strong>Mensaje:</strong> <span class="{% if data.success %}text-success{% else %}text-danger{% endif %}">{{ data.message }}</span></p>
+                    <p><strong>Iteraciones:</strong> {{ data.iterations }}</p>
+                    <p><strong>Raíz Aprox:</strong> {{ data.root|floatformat:10 }}</p>
+                    <p><strong>Error Final:</strong> {{ data.error|floatformat:"2e" }}</p>
+
+                    {% if data.results %}
+                        <h5>Tabla de Iteraciones:</h5>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Iteración</th><th>xi</th><th>xs</th><th>xm</th><th>f(xm)</th><th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.results %}
+                                <tr>
+                                    <td>{{ row.Iteración }}</td>
+                                    <td>{{ row.xi|floatformat:10 }}</td>
+                                    <td>{{ row.xs|floatformat:10|default:"---" }}</td>
+                                    <td>{{ row.xm|floatformat:10|default:"---" }}</td>
+                                    <td>{{ row.f_xm|floatformat:"1e"|default:"---" }}</td>
+                                    <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No hay datos disponibles.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

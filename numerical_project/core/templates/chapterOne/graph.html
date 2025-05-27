@@ -1,0 +1,103 @@
+{% extends "core/base_template.html" %}
+
+{% block title %}Gráfico de {{ function_string|default:"Función" }}{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Gráfico de la Función</h2>
+    <p>Función: <code>{{ function_string|default:"No especificada" }}</code></p>
+    <hr>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <strong>Error:</strong> {{ error }}
+        </div>
+    {% else %}
+        <div id="echartDiv" style="width: 100%; height: 500px;"></div>
+        <p class="text-muted mt-2">Puedes hacer zoom, moverte (pan) y ver valores en el gráfico interactivo.</p>
+    {% endif %} 
+
+    <a href="javascript:window.close();" class="btn btn-secondary mt-3">Cerrar Pestaña</a>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    {% if plot_data %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const plotData = JSON.parse('{{ plot_data|safe }}');
+                const chartDom = document.getElementById('echartDiv');
+                const myChart = echarts.init(chartDom);
+
+                console.log("Rango X:", Math.min(...plotData.x), "a", Math.max(...plotData.x));
+
+                const chartData = plotData.x.map((xVal, index) => {
+                    return [xVal, plotData.y[index]];
+                });
+
+                const initialMin = -100;
+                const initialMax = 100;
+
+                const option = {
+                    title: { text: 'Gráfico de f(x) = {{ function_string|escapejs }}' },
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+                    grid: { left: '10%', right: '10%', bottom: '10%' },
+                    xAxis: {
+                        type: 'value', 
+                        name: 'x',
+                        axisPointer: { label: { formatter: 'x = {value}' } }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: 'f(x)',
+                        axisPointer: { label: { formatter: 'y = {value}' } }
+                    },
+                    dataZoom: [ 
+                        {
+                            type: 'inside',      // Rueda y arrastre para X
+                            xAxisIndex: 0,
+                            startValue: -10,
+                            endValue: 10,         
+                            filterMode: 'none'   // Permite moverse fuera
+                        },
+                        { 
+                            type: 'inside',      // Rueda y arrastre para Y
+                            yAxisIndex: 0,
+                            startValue: -10,
+                            endValue: 10,   
+                            filterMode: 'none'   // Permite moverse fuera
+
+                        }
+                    ],
+                    series: [
+                        {
+                            name: 'f(x)',
+                            type: 'line',
+                            smooth: true, 
+                            showSymbol: false, 
+                            data: chartData,
+                            connectNulls: false,
+                            lineStyle: {
+                                color: 'red',
+                                width: 2
+                            },
+                        }
+                    ]
+                };
+
+                myChart.setOption(option);
+                window.addEventListener('resize', myChart.resize);
+
+            } catch (e) {
+                console.error("Error al renderizar el gráfico con ECharts:", e);
+                document.getElementById('echartDiv').innerHTML = '<div class="alert alert-danger">Ocurrió un error al intentar dibujar el gráfico.</div>';
+            }
+        });
+    </script>
+    {% endif %}
+{% endblock %}

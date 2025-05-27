@@ -159,24 +159,74 @@ def secante(f, x0, x1, tol, niter):
 # ==============================================================================
 
 def newton_modificado(f, f_prime, f_double_prime, x0, tol, niter):
+
     resultados = []
-    c = 0
-    error = tol + 1
-    xn = x0
-    fn = f(xn)
-    resultados.append({'Iteración': c, 'xi': xn, 'xs': np.nan, 'xm': np.nan, 'f(xm)': fn, 'Error': np.nan})
-    while error > tol and fn != 0 and c < niter:
+    xn = float(x0) 
+    
+    try:
+        fn = f(xn)
         fpn = f_prime(xn)
         fppn = f_double_prime(xn)
+    except Exception as e:
+        return [], f"Error al evaluar la función o derivadas en x0={x0}: {e}"
+
+    c = 0
+    error = tol + 1
+    
+    # Añadir la iteración inicial (0)
+    resultados.append({
+        'Iteración': c, 
+        'xi': xn, 
+        'xs': np.nan,  
+        'xm': np.nan,  
+        'f(xm)': fn,  # Mostramos f(x0)
+        'Error': np.nan # Sin error aún
+    })
+
+    while error > tol and fn != 0 and c < niter:
         denominador = fpn**2 - fn * fppn
-        if denominador == 0: return resultados, f"División por cero (Denominador = 0)."
+
+        
+        if abs(denominador) < 1e-15: # Usamos un umbral pequeño en lugar de 0 exacto
+            return resultados, f"El método falló: Denominador cercano a cero en x={xn:.10f} (Iteración {c+1}). Posible raíz múltiple o divergencia."
+
         xn_nuevo = xn - (fn * fpn) / denominador
+        
+        
+        try:
+            fn_nuevo = f(xn_nuevo)
+            fpn_nuevo = f_prime(xn_nuevo)
+            fppn_nuevo = f_double_prime(xn_nuevo)
+        except Exception as e:
+            return resultados, f"Error al evaluar en x={xn_nuevo:.10f} (Iteración {c+1}): {e}. El método se detiene."
+
         error = abs(xn_nuevo - xn)
+        
         xn = xn_nuevo
-        fn = f(xn)
+        fn = fn_nuevo
+        fpn = fpn_nuevo
+        fppn = fppn_nuevo
+        
         c += 1
-        resultados.append({'Iteración': c, 'xi': xn, 'xs': np.nan, 'xm': xn_nuevo, 'f(xm)': fn, 'Error': error})
-    if fn == 0: mensaje = f'{xn:.10f} es raíz.'
-    elif error < tol: mensaje = f'{xn:.10f} es aprox. raíz con tol={tol:.1e}'
-    else: mensaje = f'Fracasó en {niter} iteraciones.'
+
+        resultados.append({
+            'Iteración': c, 
+            'xi': xn, 
+            'xs': fpn, 
+            'xm': xn_nuevo, 
+            'f(xm)': fn, 
+            'Error': error
+        })
+
+
+    if fn == 0:
+        mensaje = f'{xn:.10f} es raíz.'
+    elif error <= tol:
+        mensaje = f'{xn:.10f} es una aproximación de la raíz con tolerancia={tol:.1e}'
+    elif c == niter:
+        mensaje = f'Se alcanzó el número máximo de {niter} iteraciones. No se encontró raíz con la tolerancia dada.'
+    else:
+        # Esta condición es menos probable con la verificación del denominador, pero la mantenemos.
+        mensaje = 'El método fracasó o explotó antes de alcanzar la convergencia o el máximo de iteraciones.'
+        
     return resultados, mensaje

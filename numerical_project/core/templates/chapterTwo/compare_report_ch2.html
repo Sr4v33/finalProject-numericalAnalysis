@@ -1,0 +1,116 @@
+{% extends "core/base_template.html" %}
+{% load static %}
+
+{% block title %}Comparación Métodos - Cap 2{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Informe Comparación - Sistemas Lineales</h1>
+    <hr>
+
+    {% if global_error %}
+        <div class="alert alert-danger">{{ global_error }}</div>
+    {% elif all_method_outputs %}
+        <h2>Parámetros de Entrada</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Matriz A:</strong> <code>{{ input_data.A_str }}</code></p>
+                <p><strong>Vector b:</strong> <code>{{ input_data.b_str }}</code></p>
+                <p><strong>Vector x0:</strong> <code>{{ input_data.x0_str }}</code></p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Tolerancia:</strong> {{ input_data.tol }}</p>
+                <p><strong>Iteraciones Máx:</strong> {{ input_data.niter }}</p>
+                <p><strong>Omega (SOR):</strong> {{ input_data.omega|default:"N/A" }}</p>
+            </div>
+        </div>
+        <hr>
+
+        <h2>Resultados Generales</h2>
+        {% if best_method %}
+            <div class="alert alert-success">
+                <strong>Mejor Método Identificado:</strong> {{ best_method }} 
+                (convergió/finalizó en {{ min_iter }} iteraciones).
+            </div>
+        {% else %}
+            <div class="alert alert-warning">
+                Ninguno de los métodos pudo determinarse como el mejor con los criterios aplicados.
+            </div>
+        {% endif %}
+
+        <div class="my-4">
+             <a href="{% url 'chapterTwo:download_pdf_report_ch2' %}" class="btn btn-danger" target="_blank">
+                <i class="bi bi-file-pdf-fill"></i> Descargar Informe en PDF
+            </a>
+        </div>
+        <hr>
+
+        <h2>Resultados por Método</h2>
+        {% for name, data_tuple in all_method_outputs.items %}
+            {% with results=data_tuple.0 message=data_tuple.1 spectral_radius=data_tuple.2 convergence_info=data_tuple.3 iterations=data_tuple.4 %}
+            <div class="card mb-4 {% if name == best_method %}border-success{% endif %}">
+                <div class="card-header {% if name == best_method %}bg-success text-white{% endif %}">
+                    <h3>{{ name }}</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>Mensaje Final:</strong> <span class="{% if 'Convergió' in message %}text-success{% else %}text-danger{% endif %}">{{ message }}</span></p>
+                    <p><strong>Radio Espectral ρ(T):</strong> 
+                        {% if spectral_radius == "inf" or spectral_radius > 10000 %} Infinito/Muy Grande {% else %} {{ spectral_radius|floatformat:7 }} {% endif %}
+                    </p>
+                    <p><strong>Convergencia Teórica:</strong> {{ convergence_info }}</p>
+                    <p><strong>Iteraciones Realizadas:</strong> {{ iterations }}</p>
+                    
+                    {% if results %}
+                        <h5>Tabla de Iteraciones (Primeras 3 y Última si hay muchas):</h5>
+                        <div class="table-responsive table-responsive-ch2">
+                            <table class="table table-sm table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Iter.</th>
+                                        {% for i in vector_size|rjust:0|slice:"1:" %}
+                                            <th>x<sub>{{ forloop.counter }}</sub></th>
+                                        {% endfor %}
+                                        <th>Error</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in results|slice:":3" %}
+                                    <tr>
+                                        <td>{{ row.Iteración }}</td>
+                                        {% for val in row.x_vector %}<td>{{ val|floatformat:7 }}</td>{% endfor %}
+                                        <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if results|length > 3 %}
+                                        {% if results|length > 4 %}<tr><td colspan="{{ vector_size|add:2 }}" class="text-center">...</td></tr>{% endif %}
+                                        {% with last_row=results|last %}
+                                        <tr>
+                                            <td>{{ last_row.Iteración }}</td>
+                                            {% for val in last_row.x_vector %}<td>{{ val|floatformat:7 }}</td>{% endfor %}
+                                            <td>{{ last_row.Error|floatformat:"2e"|default:"---" }}</td>
+                                        </tr>
+                                        {% endwith %}
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endwith %}
+        {% endfor %}
+    {% elif form_errors %}
+         <div class="alert alert-danger">
+            <p><strong>Errores en el formulario:</strong></p>
+            <ul>
+                {% for field, errors in form_errors.items %}
+                    <li>{{ field }}: {{ errors|join:", " }}</li>
+                {% endfor %}
+            </ul>
+            <p>Por favor, <a href="{% url 'chapterTwo:chapter_two_main' %}">vuelve atrás</a> y corrige los datos.</p>
+        </div>
+    {% else %}
+        <p>No se han procesado datos. <a href="{% url 'chapterTwo:chapter_two_main' %}">Intenta de nuevo</a>.</p>
+    {% endif %}
+</div>
+{% endblock %}
