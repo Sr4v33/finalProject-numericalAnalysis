@@ -8,8 +8,9 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Gráfico de la Función</h2>
-    <p>Función: <code>{{ function_string|default:"No especificada" }}</code></p>
+
+    <h2>Gráfico de Interpolación</h2>
+    <p>Polinomio: <code>{{ function_string|default:"No especificado" }}</code></p>
     <hr>
 
     {% if error %}
@@ -18,8 +19,8 @@
         </div>
     {% else %}
         <div id="echartDiv" style="width: 100%; height: 500px;"></div>
-        <p class="text-muted mt-2">Puedes hacer zoom, moverte (pan) y ver valores en el gráfico interactivo.</p>
-    {% endif %} 
+        <p class="text-muted mt-2">Puedes hacer zoom, moverte y ver valores en el gráfico interactivo.</p>
+    {% endif %}
 
     <a href="javascript:window.close();" class="btn btn-secondary mt-3">Cerrar Pestaña</a>
 </div>
@@ -30,30 +31,47 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             try {
+                // Parseamos el JSON completo. Usamos |safe porque lo generamos
+                // nosotros mismos en la vista y es seguro.
                 const plotData = JSON.parse('{{ plot_data|safe }}');
                 const chartDom = document.getElementById('echartDiv');
                 const myChart = echarts.init(chartDom);
 
-                console.log("Rango X:", Math.min(...plotData.x), "a", Math.max(...plotData.x));
-
-                const chartData = plotData.x.map((xVal, index) => {
-                    return [xVal, plotData.y[index]];
+                // Preparamos los datos para los Puntos Originales: [[x1, y1], [x2, y2], ...]
+                const originalPointsData = plotData.original_x.map((xVal, index) => {
+                    return [xVal, plotData.original_y[index]];
                 });
 
-                
+                // Preparamos los datos para la Línea Interpolada: [[x1, y1], [x2, y2], ...]
+                const interpolatedLineData = plotData.interpolated_x.map((xVal, index) => {
+                    return [xVal, plotData.interpolated_y[index]];
+                });
+
 
                 const option = {
-                    title: { text: 'Gráfico de f(x) = {{ function_string|escapejs }}' },
+                    title: { text: 'Gráfico: {{ function_string|escapejs }}' },
                     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
                     grid: { left: '10%', right: '10%', bottom: '10%' },
+                    legend: { // Añadimos leyenda para distinguir las series
+                        data: ['Polinomio Interpolado', 'Puntos Originales'],
+                        right: '10%'
+                    },
                     xAxis: {
-                        type: 'value', 
+                        type: 'value',
                         name: 'x',
+                        axisLabel: { // Mejor formato para los ejes
+                           formatter: '{value}'
+                        },
+                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} }, // Líneas de guía
                         axisPointer: { label: { formatter: 'x = {value}' } }
                     },
                     yAxis: {
                         type: 'value',
                         name: 'f(x)',
+                         axisLabel: {
+                           formatter: '{value}'
+                        },
+                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} }, // Líneas de guía
                         axisPointer: { label: { formatter: 'y = {value}' } }
                     },
                     dataZoom: [ 
@@ -74,17 +92,20 @@
                         }
                     ],
                     series: [
-                        {
-                            name: 'f(x)',
+                        { // Serie para el Polinomio (Línea)
+                            name: 'Polinomio Interpolado',
                             type: 'line',
-                            smooth: true, 
-                            showSymbol: false, 
-                            data: chartData,
-                            connectNulls: false,
-                            lineStyle: {
-                                color: 'red',
-                                width: 2
-                            },
+                            smooth: true,
+                            showSymbol: false,
+                            data: interpolatedLineData, // Datos de la línea
+                            lineStyle: { color: 'rgba(0, 123, 255, 0.8)', width: 2 },
+                        },
+                        { // Serie para los Puntos (Dispersión)
+                            name: 'Puntos Originales',
+                            type: 'scatter', // Tipo dispersión
+                            symbolSize: 10, // Tamaño del punto
+                            data: originalPointsData, // Datos de los puntos
+                            itemStyle: { color: 'purple', width: 2},
                         }
                     ]
                 };

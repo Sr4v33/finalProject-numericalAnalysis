@@ -39,6 +39,9 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.app_name == 'chapterTwo' %}active{% endif %}" href="{% url 'chapterTwo:chapter_two_main' %}">Capítulo 2</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.app_name == 'chapterThree' %}active{% endif %}" href="{% url 'chapterThree:chapter_three_main' %}">Capítulo 3</a>
+                    </li>
                     </ul>
             </div>
         </div>

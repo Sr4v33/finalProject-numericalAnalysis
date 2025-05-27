@@ -276,7 +276,6 @@ def render_to_pdf_ch2(template_src, context_dict={}):
     if not pdf.err:
         return HttpResponse(result.getvalue(), content_type='application/pdf')
     return HttpResponse(f"Error al generar PDF: {pdf.err}")
-    return HttpResponse(f"Generación de PDF deshabilitada. Contenido HTML:<br>{html}") # Placeholder
 
 def download_pdf_report_ch2_view(request):
     report_data = request.session.get('report_data_ch2')

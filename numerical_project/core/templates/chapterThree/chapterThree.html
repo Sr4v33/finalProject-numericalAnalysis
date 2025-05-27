@@ -1,0 +1,394 @@
+{% extends "core/base_template.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Capítulo 3 - Interpolación" }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        try {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false // Para no detener todo si hay un error LaTeX
+            });
+        } catch (e) {
+            console.error("Error al renderizar KaTeX:", e);
+        }
+    });
+</script>
+
+<style>
+
+    .data-input-info { font-size: 0.9em; color: #6c757d; }
+    .polynomial-output, .coefficients-output {
+        text-align: center;
+        font-family: monospace;
+        padding: 15px;
+        border-radius: 4px;
+        word-break: break-word;
+        font-size: 1.1em; /* Slightly larger font for readability */
+    }
+    .table-responsive-ch3 { max-height: 300px; overflow-y: auto; margin-top: 10px; }
+    .field-error { color: #dc3545; font-size: 0.8em; }
+    .point-input { width: 80px; margin-right: 5px; } /* Adjust input width */
+    #pointsTable td { padding: 5px; vertical-align: top; }
+    .vandermonde-section { margin-top: 20px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fff; }
+    .vandermonde-section h4 { margin-bottom: 15px; border-bottom: 2px solid #0d6efd; padding-bottom: 5px; color: #0d6efd;}
+    .katex-display { margin: 1.5em 0; } /* Add margin around KaTeX blocks */
+    .btn-outline-danger { padding: 0.1rem 0.4rem; font-size: 0.75rem; } /* Smaller remove button */
+    .btn-outline-primary { margin-top: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{{ page_title|default:"Capítulo 3: Interpolación" }}</h1>
+    <hr>
+
+    <div class="row">
+        <div class="col-md-5">
+            <h2></i> Parámetros de Entrada</h2>
+            <div class="mb-3 text-start">
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#helpModalCh3">
+                    <i class="bi bi-question-circle-fill"></i> ¿Necesitas Ayuda?
+                </button>
+            </div>
+
+            {% if not results and not polynom_display %}
+                {% if form.errors or formset.errors or error_message %}
+                    <div class="alert alert-danger">
+                        <p><strong>Por favor, corrige los siguientes errores:</strong></p>
+                        <ul>
+                            {% if error_message %}<li>{{ error_message }}</li>{% endif %}
+                            {% for field in form %}{% for error in field.errors %}<li> {{ error }}</li>{% endfor %}{% endfor %}
+                            {% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}
+                            {% for subform in formset %}{% for field in subform %}{% for error in field.errors %}<li>Punto en {{ field.label }}: {% if error == "This field is required." %} Este campo es requerido {% endif %}</li>{% endfor %}{% endfor %}{% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            {% endif %}
+
+            <form method="post" id="interpolationForm">
+                {% csrf_token %}
+                {{ formset.management_form }}
+
+                <table id="pointsTable" class="table table-borderless" data-min-num="{{ formset.min_num|default:2 }}">
+                    <thead>
+                        <tr><th>X</th><th>Y</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                    {% for subform in formset %}
+                        <tr class="point-row"><td>
+                                    {{ subform.as_hidden }}
+                                    {{ subform.x }}
+                                    {% if subform.x.errors %}
+                                        <div class="field-error">{{ subform.x.errors.as_text }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ subform.y }}
+                                    {% if subform.y.errors %}
+                                        <div class="field-error">{{ subform.y.errors.as_text }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-row">−</button>
+                                </td>
+                            </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus-lg"></i> Añadir Punto</button>
+
+                <div class="data-input-info mt-3">
+                    <p>Ingresa entre 2 y 8 puntos (X, Y). Los valores de X deben ser únicos.</p>
+                </div>
+
+                <div class="mb-3 mt-3">
+                    {{ form.method.label_tag }}
+                    {{ form.method }}
+                    {% if form.method.errors %}<div class="field-error">{{ form.method.errors.as_text }}</div>{% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-primary"><i class="bi bi-calculator"></i> Calcular</button>
+                <button type="submit" class="btn btn-success ms-2" formaction="{% url 'chapterThree:compare_methods_ch3' %}">
+                    <i class="bi bi-bar-chart-steps"></i> Comparar Todos
+                </button>
+            </form>
+        </div>
+
+        <div class="col-md-7">
+            <h2>Resultados: {{ method_name|default:"" }}</h2>
+
+
+            {% if method_name == 'Vandermonde' and results %}
+            <div class="vandermonde-section">
+
+                <h4>Puntos de Entrada:</h4>
+                <table class="table table-sm table-bordered" style="text-align: center">
+                    <thead><tr><th>$x$</th><th>$y$</th></tr></thead>
+                    <tbody>
+                        {% for p in results.points %}
+                        <tr><td>$${{ p.x}}$$</td><td>$${{ p.y}}$$</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+    
+                <h4>Matriz de Vandermonde:</h4>
+                <div class="text-center">
+                $$
+                \begin{pmatrix}
+                {% for row in results.matrixA %}
+                    {% for val in row %}
+                        {{ val}} {% if not forloop.last %}&{% endif %}
+                    {% endfor %}
+                    {% if not forloop.last %} \\ {% endif %}
+                {% endfor %}
+                \end{pmatrix}
+                \begin{pmatrix}
+                    a_1 \\ a_2 \\ \vdots \\ a_{{ results.matrixA|length }}
+                \end{pmatrix}
+                =
+                \begin{pmatrix}
+                {% for val in results.B %}
+                    {{ val.0}} {% if not forloop.last %} \\ {% endif %}
+                {% endfor %}
+                \end{pmatrix}
+                $$
+                </div>
+
+                <h4>Coeficientes del Polinomio:</h4>
+                <div class="coefficients-output">
+                    $$
+                    [
+                    {% for c in results.coeffs %}
+                        {{ c }} 
+                        {% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                    ]
+                    $$
+                </div>
+
+                <h4>Polinomio de Vandermonde:</h4>
+                <div class="polynomial-output">
+                    $P(x) = {{ results.polynom }}$
+                </div>
+
+                {% if results.plot_data %}
+                <button type="button" class="btn btn-danger mt-2 graph-button"
+                        data-plot="{{ results.plot_data|escapejs }}"
+                        data-title="Polinomio de Vandermonde">
+                    <i class="bi bi-graph-up"></i> Graficar Polinomio de Vandermonde
+                </button>
+                {% endif %}
+
+            </div>
+
+            {% elif polynom_display %}
+                <h4>Polinomio/Trazador Interpolante:</h4>
+                <div class="polynomial-output">
+                    {% if polynom_display.0 %}
+                        {% for tramo in polynom_display %}
+                            {{ tramo }}<br>
+                        {% endfor %}
+                    {% else %}
+                        {{ polynom_display }}
+                    {% endif %}
+                </div>
+                {% if plot_data_for_graph_button %}
+                <button type="button" class="btn btn-danger mt-2 graph-button"
+                        data-plot='{{ results.plot_data|safe }}'  {# <-- CAMBIO CLAVE #}
+                        data-title="{{ results.polynom }}">
+                    <i class="bi bi-graph-up"></i> Graficar Polinomio de Vandermonde
+                </button>
+                {% endif %}
+
+            {% elif request.method == "POST" and not error_message and not form.errors %}
+                <p class="text-muted">Cálculo completado o error en la generación de resultados.</p>
+            {% else %}
+                 <p class="text-muted">Ingresa los puntos, selecciona un método y haz clic en "Calcular". Los resultados se mostrarán aquí</p>
+            {% endif %}
+
+             {% if diff_table_newton %}
+             <h4>Tabla de Diferencias Divididas (Newton):</h4>
+             <div class="table-responsive-ch3">
+                 <table class="table table-sm"><tbody>
+                 {% for row in diff_table_newton %}<tr>
+                     {% for val in row %}
+                         <td>{% if val is not None %}{{ val|floatformat:4 }}{% endif %}</td>
+                     {% endfor %}
+                 </tr>{% endfor %}
+                 </tbody></table>
+             </div>
+             {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="helpModalCh3" tabindex="-1" aria-labelledby="helpModalCh3Label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalCh3Label">Ayuda para Interpolación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h5><i class="bi bi-pencil-square"></i> Ingreso de Datos (X, Y):</h5>
+                <p>Usa los campos para ingresar los valores numéricos para X y Y. Haz clic en '<i class="bi bi-plus-lg"></i> Añadir Punto' para agregar más filas (mínimo 2, máximo 8).</p>
+                <ul>
+                    <li>Los puntos X deben ser únicos.</li>
+                    <li>Usa '.' como separador decimal.</li>
+                </ul>
+                <h5><i class="bi bi-gear-wide-connected"></i> Métodos:</h5>
+                <ul>
+                    <li><strong>Vandermonde, Newton, Lagrange:</strong> Generan un único polinomio que pasa por todos los puntos.</li>
+                    <li><strong>Spline Lineal:</strong> Conecta los puntos con rectas.</li>
+                    <li><strong>Spline Cúbico:</strong> Genera curvas cúbicas suaves entre puntos.</li>
+                </ul>
+                <h5><i class="bi bi-bar-chart-steps"></i> Comparar Todos:</h5>
+                <p>Calcula y muestra los resultados para todos los métodos disponibles usando los mismos puntos de entrada.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tableBody = document.querySelector('#pointsTable tbody');
+    const addRowButton = document.getElementById('addRow');
+    const formsetPrefix = '{{ formset.prefix }}'; // Get prefix from formset
+    const maxRows = 8; // Max points
+    const minRows = parseInt(document.getElementById('pointsTable').dataset.minNum, 10);
+
+    // Function to update TOTAL_FORMS
+    function updateTotalForms() {
+        const totalFormsInput = document.querySelector(`input[name="${formsetPrefix}-TOTAL_FORMS"]`);
+        const currentRows = tableBody.querySelectorAll('tr').length;
+        totalFormsInput.value = currentRows;
+    }
+
+    // Function to update form indices
+    function updateFormIndices() {
+        const rows = tableBody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            row.querySelectorAll('input, select, textarea').forEach(input => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    input.setAttribute('name', name.replace(/-(\d+)-/, `-${index}-`));
+                }
+                const id = input.getAttribute('id');
+                 if (id) {
+                    input.setAttribute('id', id.replace(/-(\d+)-/, `-${index}-`));
+                }
+            });
+        });
+    }
+
+    // Add Row
+    addRowButton.addEventListener('click', () => {
+        if (tableBody.rows.length >= maxRows) {
+            alert(`Solo puedes ingresar hasta ${maxRows} puntos.`);
+            return;
+        }
+
+        const newRow = tableBody.rows[0].cloneNode(true);
+        const newIndex = tableBody.rows.length;
+
+        // Clear input values and remove error messages in the new row
+        newRow.querySelectorAll('input[type="number"], input[type="text"]').forEach(i => i.value = '');
+        newRow.querySelectorAll('.field-error').forEach(e => e.remove());
+        
+        // Ensure hidden fields are correctly handled (clear ID, uncheck DELETE)
+        const idInput = newRow.querySelector(`input[name$="-id"]`);
+        if (idInput) idInput.value = '';
+        const deleteInput = newRow.querySelector(`input[name$="-DELETE"]`);
+        if (deleteInput) deleteInput.checked = false;
+
+        newRow.style.display = ''; // Ensure it's visible if cloned from a hidden one
+        tableBody.appendChild(newRow);
+        
+        updateTotalForms();
+        updateFormIndices(); // Update indices after adding
+    });
+
+    // Remove Row
+    tableBody.addEventListener('click', e => {
+        if (e.target.closest('.remove-row')) {
+            const rowToRemove = e.target.closest('tr');
+            
+            if (tableBody.rows.length <= minRows) {
+                 alert(`Debes ingresar al menos ${minRows} puntos.`);
+                 return;
+            }
+
+            const deleteInput = rowToRemove.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (deleteInput) {
+                // If using formset with can_delete=True, check the box and hide
+                deleteInput.checked = true;
+                rowToRemove.style.display = 'none';
+            } else {
+                // Otherwise, just remove the row (be careful, this might not work perfectly with formsets without DELETE)
+                rowToRemove.remove();
+            }
+
+            updateTotalForms();
+            updateFormIndices(); // Update indices after removing
+        }
+    });
+
+    // Graphing Logic
+    const graphBaseUrl = "{% url 'chapterThree:graph_ch3' %}";
+    document.querySelectorAll('.graph-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const plotDataStr = this.getAttribute('data-plot');
+            const title = this.getAttribute('data-title');
+
+            if (!plotDataStr) {
+                alert("No hay datos para graficar.");
+                return;
+            }
+            function decodeUnicode(str) {
+                return str.replace(/\\u[\dA-F]{4}/gi, 
+                    match => String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16)));
+            }
+            try {
+                
+                const cleanedStr = decodeUnicode(plotDataStr);
+                const plotData = JSON.parse(cleanedStr);
+                const params = new URLSearchParams({
+                    original_x: JSON.stringify(plotData.original_x),
+                    original_y: JSON.stringify(plotData.original_y),
+                    interpolated_x: JSON.stringify(plotData.interpolated_x),
+                    interpolated_y: JSON.stringify(plotData.interpolated_y),
+                    function_name: title
+                });
+                window.open(`${graphBaseUrl}?${params.toString()}`, '_blank');
+            } catch(e) {
+                console.error("Error parsing plot data:", e, plotDataStr);
+                alert("Error al preparar los datos para el gráfico.");
+            }
+        });
+    });
+
+    // Initial setup calls
+    updateTotalForms();
+    updateFormIndices(); // Ensure indices are correct on load
+});
+</script>
+{% endblock %}
