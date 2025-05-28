@@ -3,14 +3,49 @@
 {% block title %}Gráfico de {{ function_string|default:"Función" }}{% endblock %}
 
 {% block extra_head %}
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        try {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false // Para no detener todo si hay un error LaTeX
+            });
+        } catch (e) {
+            console.error("Error al renderizar KaTeX:", e);
+        }
+    });
+</script>
+<style>
+    #polinomio{
+        font-size: 1.2em;
+        padding: -20px;
+    }
+    .katex-display>.katex>.katex-html {
+    margin-top:-0.5em;
+    display: flex;
+    justify-content: start;
+    position: relative;
+    color: purple;
+
+}
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
 
     <h2>Gráfico de Interpolación</h2>
-    <p>Polinomio: <code>{{ function_string|default:"No especificado" }}</code></p>
+    <p id="polinomio" >Polinomio: <span class="katex-align-left">$$ {{ function_string|default:"No especificado" }} $$</span></p>
+
     <hr>
 
     {% if error %}
@@ -28,50 +63,73 @@
 
 {% block extra_scripts %}
     {% if plot_data %}
-    <script>
+        <script>
         document.addEventListener('DOMContentLoaded', function() {
             try {
-                // Parseamos el JSON completo. Usamos |safe porque lo generamos
-                // nosotros mismos en la vista y es seguro.
                 const plotData = JSON.parse('{{ plot_data|safe }}');
                 const chartDom = document.getElementById('echartDiv');
+                if (!chartDom) {
+                    console.error("Elemento 'echartDiv' no encontrado.");
+                    return;
+                }
                 const myChart = echarts.init(chartDom);
 
-                // Preparamos los datos para los Puntos Originales: [[x1, y1], [x2, y2], ...]
-                const originalPointsData = plotData.original_x.map((xVal, index) => {
-                    return [xVal, plotData.original_y[index]];
-                });
+                let originalPointsData = [];
+                if (plotData.original_x && plotData.original_y && 
+                    plotData.original_x.length === plotData.original_y.length) {
+                    originalPointsData = plotData.original_x.map((xVal, index) => {
+                        return [xVal, plotData.original_y[index]];
+                    });
+                } else {
+                    console.warn("Datos de puntos originales incompletos o malformados.");
+                }
 
-                // Preparamos los datos para la Línea Interpolada: [[x1, y1], [x2, y2], ...]
-                const interpolatedLineData = plotData.interpolated_x.map((xVal, index) => {
-                    return [xVal, plotData.interpolated_y[index]];
-                });
-
+                let interpolatedLineData = [];
+                if (plotData.interpolated_x && plotData.interpolated_y &&
+                    plotData.interpolated_x.length === plotData.interpolated_y.length) {
+                    interpolatedLineData = plotData.interpolated_x.map((xVal, index) => {
+                        return [xVal, plotData.interpolated_y[index]];
+                    });
+                } else {
+                    console.warn("Datos de línea interpolada incompletos o malformados.");
+                }
+                
+                const functionNameString = '{{ function_string|escapejs|default:"Interpolación" }}';
 
                 const option = {
-                    title: { text: 'Gráfico: {{ function_string|escapejs }}' },
-                    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-                    grid: { left: '10%', right: '10%', bottom: '10%' },
-                    legend: { // Añadimos leyenda para distinguir las series
+                    title: {
+                        text: 'Gráfico Interpolado', // Título general para el gráfico
+                        left: 'left', // Alinear a la izquierda
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'cross' }
+                    },
+                    grid: {
+                        left: '8%',  // Espacio para etiquetas del eje Y
+                        right: '8%', // Espacio para leyenda o borde
+                        bottom: '10%',// Espacio para etiquetas del eje X y dataZoom
+                        containLabel: true // Asegura que las etiquetas de los ejes no se corten
+                    },
+                    legend: { 
                         data: ['Polinomio Interpolado', 'Puntos Originales'],
-                        right: '10%'
                     },
                     xAxis: {
                         type: 'value',
                         name: 'x',
-                        axisLabel: { // Mejor formato para los ejes
-                           formatter: '{value}'
-                        },
-                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} }, // Líneas de guía
+                        nameLocation: 'middle',
+                        nameGap: 30,
+                        axisLabel: { formatter: '{value}' },
+                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} },
                         axisPointer: { label: { formatter: 'x = {value}' } }
                     },
                     yAxis: {
                         type: 'value',
                         name: 'f(x)',
-                         axisLabel: {
-                           formatter: '{value}'
-                        },
-                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} }, // Líneas de guía
+                        nameLocation: 'middle',
+                        nameGap: 50, // Aumentar si el nombre del eje se corta
+                        axisLabel: { formatter: '{value}' },
+                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} },
                         axisPointer: { label: { formatter: 'y = {value}' } }
                     },
                     dataZoom: [ 
@@ -91,31 +149,52 @@
 
                         }
                     ],
-                    series: [
-                        { // Serie para el Polinomio (Línea)
-                            name: 'Polinomio Interpolado',
-                            type: 'line',
-                            smooth: true,
-                            showSymbol: false,
-                            data: interpolatedLineData, // Datos de la línea
-                            lineStyle: { color: 'rgba(0, 123, 255, 0.8)', width: 2 },
-                        },
-                        { // Serie para los Puntos (Dispersión)
-                            name: 'Puntos Originales',
-                            type: 'scatter', // Tipo dispersión
-                            symbolSize: 10, // Tamaño del punto
-                            data: originalPointsData, // Datos de los puntos
-                            itemStyle: { color: 'purple', width: 2},
-                        }
-                    ]
+                    series: [] // Inicializar array de series vacío
                 };
 
+                // Añadir serie de línea interpolada si hay datos
+                if (interpolatedLineData.length > 0) {
+                    option.series.push({
+                        name: 'Polinomio Interpolado',
+                        type: 'line',
+                        smooth: false,
+                        showSymbol: false,
+                        data: interpolatedLineData,
+                        lineStyle: { color: 'rgba(0, 123, 255, 0.8)', width: 2 },
+                    });
+                    option.legend.data.push(functionNameString);
+                }
+
+                // Añadir serie de puntos originales si hay datos
+                if (originalPointsData.length > 0) {
+                    option.series.push({
+                        name: 'Puntos Originales',
+                        type: 'scatter',
+                        symbolSize: 8, 
+                        data: originalPointsData,
+                        itemStyle: { color: 'purple' },
+                        zlevel: 1 // Para asegurar que los puntos estén encima de la línea
+                    });
+                    option.legend.data.push('Puntos Originales');
+                }
+                
+                if (option.series.length === 0) {
+                    console.warn("No hay datos para graficar ninguna serie.");
+                    chartDom.innerHTML = '<div class="alert alert-warning" role="alert">No hay datos disponibles para mostrar en el gráfico.</div>';
+                    return; 
+                }
+
                 myChart.setOption(option);
-                window.addEventListener('resize', myChart.resize);
+                window.addEventListener('resize', function() { // Agregado 'function'
+                    myChart.resize();
+                });
 
             } catch (e) {
                 console.error("Error al renderizar el gráfico con ECharts:", e);
-                document.getElementById('echartDiv').innerHTML = '<div class="alert alert-danger">Ocurrió un error al intentar dibujar el gráfico.</div>';
+                const chartDiv = document.getElementById('echartDiv');
+                if (chartDiv) {
+                     chartDiv.innerHTML = '<div class="alert alert-danger">Ocurrió un error al intentar dibujar el gráfico. Revise la consola (F12).</div>';
+                }
             }
         });
     </script>

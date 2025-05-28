@@ -8,3 +8,8 @@ urlpatterns = [
     path('graph/', views.graph_view, name='graph_ch3'),
     path('compare/', views.compare_methods_view, name='compare_methods_ch3'),
 ]
+
+
+
+
+

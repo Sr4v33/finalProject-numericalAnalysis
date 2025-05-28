@@ -105,8 +105,8 @@
                     {% if form.omega_sor.help_text %}<small class="form-text text-muted">{{ form.omega_sor.help_text }}</small>{% endif %}
                 </div>
                 
-                <button type="submit" class="btn btn-primary" id="calculateButtonCh2" formaction="{% url 'chapterTwo:chapter_two_main' %}">Calcular</button>
-                <button type="submit" class="btn btn-success ms-2" id="compareButtonCh2" formaction="{% url 'chapterTwo:compare_methods_ch2' %}">Comparar Todos</button>
+                <button type="submit" class="btn btn-primary" id="calculateButtonCh2" formaction="{% url 'chapterTwo:chapter_two_main' %}"><i class="bi bi-calculator"></i> Calcular</button>
+                <button type="submit" class="btn btn-success ms-2" id="compareButtonCh2" formaction="{% url 'chapterTwo:compare_methods_ch2' %}"><i class="bi bi-bar-chart-steps"></i> Comparar Todos</button>
             </form>
         </div>
 

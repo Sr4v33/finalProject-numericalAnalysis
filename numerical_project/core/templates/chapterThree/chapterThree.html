@@ -40,7 +40,6 @@
     }
     .table-responsive-ch3 { max-height: 300px; overflow-y: auto; margin-top: 10px; }
     .field-error { color: #dc3545; font-size: 0.8em; }
-    .point-input { width: 80px; margin-right: 5px; } /* Adjust input width */
     #pointsTable td { padding: 5px; vertical-align: top; }
     .vandermonde-section { margin-top: 20px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fff; }
     .vandermonde-section h4 { margin-bottom: 15px; border-bottom: 2px solid #0d6efd; padding-bottom: 5px; color: #0d6efd;}
@@ -134,15 +133,6 @@
             {% if method_name == 'Vandermonde' and results %}
             <div class="vandermonde-section">
 
-                <h4>Puntos de Entrada:</h4>
-                <table class="table table-sm table-bordered" style="text-align: center">
-                    <thead><tr><th>$x$</th><th>$y$</th></tr></thead>
-                    <tbody>
-                        {% for p in results.points %}
-                        <tr><td>$${{ p.x}}$$</td><td>$${{ p.y}}$$</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
     
                 <h4>Matriz de Vandermonde:</h4>
                 <div class="text-center">
@@ -187,7 +177,7 @@
                 {% if results.plot_data %}
                 <button type="button" class="btn btn-danger mt-2 graph-button"
                         data-plot="{{ results.plot_data|escapejs }}"
-                        data-title="Polinomio de Vandermonde">
+                       data-title="{{ results.polynom }}">
                     <i class="bi bi-graph-up"></i> Graficar Polinomio de Vandermonde
                 </button>
                 {% endif %}
@@ -205,32 +195,216 @@
                         {{ polynom_display }}
                     {% endif %}
                 </div>
-                {% if plot_data_for_graph_button %}
-                <button type="button" class="btn btn-danger mt-2 graph-button"
-                        data-plot='{{ results.plot_data|safe }}'  {# <-- CAMBIO CLAVE #}
-                        data-title="{{ results.polynom }}">
-                    <i class="bi bi-graph-up"></i> Graficar Polinomio de Vandermonde
-                </button>
-                {% endif %}
 
-            {% elif request.method == "POST" and not error_message and not form.errors %}
-                <p class="text-muted">Cálculo completado o error en la generación de resultados.</p>
-            {% else %}
+
+            {% elif not results and not polynom_display %}
                  <p class="text-muted">Ingresa los puntos, selecciona un método y haz clic en "Calcular". Los resultados se mostrarán aquí</p>
             {% endif %}
 
-             {% if diff_table_newton %}
-             <h4>Tabla de Diferencias Divididas (Newton):</h4>
-             <div class="table-responsive-ch3">
-                 <table class="table table-sm"><tbody>
-                 {% for row in diff_table_newton %}<tr>
-                     {% for val in row %}
-                         <td>{% if val is not None %}{{ val|floatformat:4 }}{% endif %}</td>
-                     {% endfor %}
-                 </tr>{% endfor %}
-                 </tbody></table>
-             </div>
-             {% endif %}
+             {% if results.type == 'newton' %}
+            <div class="vandermonde-section">
+
+                <h4>Tabla de Diferencias Divididas de Newton:</h4>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                {% for h in results.headers %}
+                                    <th>$${{ h }}$$</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in results.table %}
+                                <tr>
+                                    {% for val in row %}
+                                        {# Formateamos cada valor #}
+                                        <td>$${{ val|floatformat:3 }}$$</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Coeficientes del Polinomio de Newton:</h4>
+                <div class="coefficients-output">
+                   $$[
+                    {% for c in results.coeffs %}
+                        {{ c|floatformat:3 }}
+                        {% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                    ]$$
+                </div>
+
+                <h4>Polinomio de Newton:</h4>
+                <div class="polynomial-output"">
+                   ${{ results.polynom_newton_form }}$
+                </div>
+
+                <h4>Polinomio de Newton (Forma Expandida):</h4>
+                <div class="polynomial-output">
+                   $P(x) ={{ results.polynom }}$
+                </div>
+
+                <button type="button" class="btn btn-danger mt-2 graph-button"
+                        data-plot='{{ results.plot_data|safe }}'
+                        data-title="{{ results.polynom }}">
+                    <i class="bi bi-graph-up"></i> Graficar Polinomio de Newton
+                </button>
+
+            </div>
+            {% endif %}
+            {% if results.type == 'lagrange' %}
+                <div class="vandermonde-section"> {# Puedes reusar el estilo o crear uno específico #}
+
+                    <h4>Polinomios Base de Lagrange $L_i(x)$:</h4>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered text-center">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>$i$</th>
+                                    <th>$L_i(x)$</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in results.lagrange_basis_polynomials %}
+                                    <tr>
+                                        <td>{{ item.i }}</td>
+                                        <td>
+                                            $L_{{item.i}}(x) = {{ item.Li_x_str }}$
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4>Polinomio de Lagrange (Forma Nativa):</h4>
+                    <div class="polynomial-output">
+                    $P(x) = {{ results.polynom_lagrange_form }}$
+                    </div>
+
+                    <h4>Polinomio de Lagrange (Forma Expandida):</h4>
+                    <div class="polynomial-output">
+                    $P(x) = {{ results.polynom }}$ {# Esta es la cadena expandida #}
+                    </div>
+
+                    <button type="button" class="btn btn-danger mt-2 graph-button"
+                            data-plot='{{ results.plot_data|safe }}'
+                            data-title="{{ results.polynom }}">
+                        <i class="bi bi-graph-up"></i> Graficar Polinomio de Lagrange
+                    </button>
+                </div>
+            {% endif %}
+            
+            {% if results.type == 'spline_linear' %}
+                <div class="vandermonde-section">
+                    <h4>Spline Lineal - Coeficientes por Tramo $S_i(x) = m_i x + c_i$:</h4>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered text-center">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>$i$ (Tramo $x_i \dots x_{i+1}$)</th>
+                                    <th>Coeff1 ($m_i$)</th>
+                                    <th>Coeff2 ($c_i$)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in results.coeffs_table %}
+                                <tr>
+                                    <td>$$ {{ item.i }} $$</td>
+                                    <td>$$ {{ item.coeff1|floatformat:3 }} $$</td>
+                                    <td>$$ {{ item.coeff2|floatformat:3 }} $$</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4>Spline Lineal - Trazadores por Tramo:</h4>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered" style="text-align: center;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>$i$</th>
+                                    <th>Trazador $S_i(x)$ para $x \in [x_i, x_{i+1}]$</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in results.tracers_list %}
+                                <tr>
+                                    <td>$$ {{ item.i }} $$</td>
+                                    <td>$$ S_{{item.i}}(x) = {{ item.tracer_str}} $$</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-danger mt-2 graph-button"
+                            data-plot='{{ results.plot_data|safe }}'
+                            data-title="{{ results.polynom }}">
+                        <i class="bi bi-graph-up"></i> Graficar Spline Lineal
+                    </button>
+                </div>
+            {% endif %}
+
+
+        {% if results.type == 'spline_cubic' %}
+            <div class="vandermonde-section">
+                <h4>Spline Cúbico - Coeficientes por Tramo $S_i(x) = Ax^3 + Bx^2 + Cx + D$:</h4>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-bordered text-center" style="text-align: center;">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$i$ (Tramo $x_i \dots x_{i+1}$)</th>
+                                <th>Coeff1 ($A_i$)</th>
+                                <th>Coeff2 ($B_i$)</th>
+                                <th>Coeff3 ($C_i$)</th>
+                                <th>Coeff4 ($D_i$)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results.coeffs_table %}
+                            <tr> 
+                                <td>$$ {{ item.i }} $$</td>
+                                <td>$$ {{ item.coeff1|floatformat:6 }} $$</td>
+                                <td>$$ {{ item.coeff2|floatformat:6 }} $$</td>
+                                <td>$$ {{ item.coeff3|floatformat:6 }} $$</td>
+                                <td>$$ {{ item.coeff4|floatformat:6 }} $$</td>
+                            </tr> 
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Spline Cúbico - Trazadores por Tramo:</h4>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-bordered" style="text-align: center;">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$i$</th>
+                                <th>Trazador $S_i(x)$ para $x \in [x_i, x_{i+1}]$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results.tracers_list %}
+                            <tr>
+                                <td>$$ {{ item.i }} $$</td>
+                                <td>$$ S_{{item.i}}(x) = {{ item.tracer_str }} $$</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                 <button type="button" class="btn btn-danger mt-2 graph-button"
+                        data-plot='{{ results.plot_data|safe }}'
+                        data-title="Spline Cúbico Natural">
+                    <i class="bi bi-graph-up"></i> Graficar Spline Cúbico
+                </button>
+            </div>
+        {% endif %}
+
 
         </div>
     </div>
@@ -244,20 +418,25 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <h5><i class="bi bi-pencil-square"></i> Ingreso de Datos (X, Y):</h5>
-                <p>Usa los campos para ingresar los valores numéricos para X y Y. Haz clic en '<i class="bi bi-plus-lg"></i> Añadir Punto' para agregar más filas (mínimo 2, máximo 8).</p>
+                <h4></i> Ingreso de Datos (X, Y):</h4>
+                <p>Usa los campos para ingresar los valores numéricos para X e Y. 
+                    <br>
+                    <strong>Haz clic en '<i class="bi bi-plus-lg"></i> Añadir Punto' para agregar más filas (mínimo 2, máximo 8).</strong></p>
                 <ul>
-                    <li>Los puntos X deben ser únicos.</li>
-                    <li>Usa '.' como separador decimal.</li>
+                    <li>Los puntos X deben ser <strong>únicos</strong>.</li>
+                    <li>Cada punto X debe tener un <strong>valor Y correspondiente</strong>.</li>
                 </ul>
-                <h5><i class="bi bi-gear-wide-connected"></i> Métodos:</h5>
+                <h4>Métodos:</h4>
                 <ul>
                     <li><strong>Vandermonde, Newton, Lagrange:</strong> Generan un único polinomio que pasa por todos los puntos.</li>
                     <li><strong>Spline Lineal:</strong> Conecta los puntos con rectas.</li>
                     <li><strong>Spline Cúbico:</strong> Genera curvas cúbicas suaves entre puntos.</li>
                 </ul>
-                <h5><i class="bi bi-bar-chart-steps"></i> Comparar Todos:</h5>
-                <p>Calcula y muestra los resultados para todos los métodos disponibles usando los mismos puntos de entrada.</p>
+                <h4>Comparar Todos:</h4>
+                <p>Calcula y muestra los resultados para todos los métodos disponibles usando los mismos puntos de entrada.
+                    <br>
+                    <strong>Nota: Se debe ingresar un X e Y conocidos para el cálculo del error de cada método.</strong></p>
+                </p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>

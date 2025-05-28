@@ -3,13 +3,48 @@
 {% block title %}Gráfico de {{ function_string|default:"Función" }}{% endblock %}
 
 {% block extra_head %}
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        try {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false // Para no detener todo si hay un error LaTeX
+            });
+        } catch (e) {
+            console.error("Error al renderizar KaTeX:", e);
+        }
+    });
+</script>
+<style>
+    #funcion{
+        font-size: 1.2em;
+        padding: -20px;
+    }
+    .katex-display>.katex>.katex-html {
+    margin-top:-0.5em;
+    display: flex;
+    justify-content: start;
+    position: relative;
+    color: purple;
+
+}
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <h2>Gráfico de la Función</h2>
-    <p>Función: <code>{{ function_string|default:"No especificada" }}</code></p>
+    <p id="funcion" >Función: <span class="katex-align-left">$$ {{ function_string|default:"No especificado" }} $$</span></p>
+
     <hr>
 
     {% if error %}
@@ -18,7 +53,7 @@
         </div>
     {% else %}
         <div id="echartDiv" style="width: 100%; height: 500px;"></div>
-        <p class="text-muted mt-2">Puedes hacer zoom, moverte (pan) y ver valores en el gráfico interactivo.</p>
+        <p class="text-muted mt-2">Puedes hacer zoom, moverte y ver valores en el gráfico interactivo.</p>
     {% endif %} 
 
     <a href="javascript:window.close();" class="btn btn-secondary mt-3">Cerrar Pestaña</a>
@@ -43,17 +78,39 @@
                 
 
                 const option = {
-                    title: { text: 'Gráfico de f(x) = {{ function_string|escapejs }}' },
-                    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-                    grid: { left: '10%', right: '10%', bottom: '10%' },
+                    title: {
+                        text: 'Gráfico de F(x)', // Título general para el gráfico
+                        left: 'left', // Alinear a la izquierda
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'cross' }
+                    },
+                    legend: { 
+                        data: ['F(x)'],
+                    },
+                    grid: {
+                        left: '8%',  // Espacio para etiquetas del eje Y
+                        right: '8%', // Espacio para leyenda o borde
+                        bottom: '10%',// Espacio para etiquetas del eje X y dataZoom
+                        containLabel: true // Asegura que las etiquetas de los ejes no se corten
+                    },
                     xAxis: {
-                        type: 'value', 
+                        type: 'value',
                         name: 'x',
+                        nameLocation: 'middle',
+                        nameGap: 30,
+                        axisLabel: { formatter: '{value}' },
+                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} },
                         axisPointer: { label: { formatter: 'x = {value}' } }
                     },
                     yAxis: {
                         type: 'value',
                         name: 'f(x)',
+                        nameLocation: 'middle',
+                        nameGap: 50, // Aumentar si el nombre del eje se corta
+                        axisLabel: { formatter: '{value}' },
+                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#ccc'} },
                         axisPointer: { label: { formatter: 'y = {value}' } }
                     },
                     dataZoom: [ 
@@ -73,28 +130,39 @@
 
                         }
                     ],
-                    series: [
-                        {
-                            name: 'f(x)',
-                            type: 'line',
-                            smooth: true, 
-                            showSymbol: false, 
-                            data: chartData,
-                            connectNulls: false,
-                            lineStyle: {
-                                color: 'red',
-                                width: 2
-                            },
-                        }
-                    ]
+                    series: [] // Inicializar array de series vacío
                 };
 
+                // Añadir serie de línea interpolada si hay datos
+                if (chartData.length > 0) {
+                    option.series.push({
+                        name: 'F(x)',
+                        type: 'line',
+                        smooth: true,
+                        showSymbol: false,
+                        data: chartData,
+                        itemStyle: { color: 'purple', width: 2 },
+                    });
+                }
+
+                
+                if (option.series.length === 0) {
+                    console.warn("No hay datos para graficar ninguna serie.");
+                    chartDom.innerHTML = '<div class="alert alert-warning" role="alert">No hay datos disponibles para mostrar en el gráfico.</div>';
+                    return; 
+                }
+
                 myChart.setOption(option);
-                window.addEventListener('resize', myChart.resize);
+                window.addEventListener('resize', function() { // Agregado 'function'
+                    myChart.resize();
+                });
 
             } catch (e) {
                 console.error("Error al renderizar el gráfico con ECharts:", e);
-                document.getElementById('echartDiv').innerHTML = '<div class="alert alert-danger">Ocurrió un error al intentar dibujar el gráfico.</div>';
+                const chartDiv = document.getElementById('echartDiv');
+                if (chartDiv) {
+                     chartDiv.innerHTML = '<div class="alert alert-danger">Ocurrió un error al intentar dibujar el gráfico. Revise la consola (F12).</div>';
+                }
             }
         });
     </script>

@@ -3,7 +3,7 @@
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from .forms import InterpolationForm, PointFormSet
-from .methods import calculate_vandermonde
+from .methods import calculate_vandermonde, calculate_newton, calculate_lagrange, calculate_linear_spline, calculate_cubic_spline
 import numpy as np
 import json
 import matplotlib.pyplot as plt
@@ -30,40 +30,76 @@ def interpolation_view(request: HttpRequest) -> HttpResponse:
 
         if form.is_valid() and formset.is_valid():
             method = form.cleaned_data['method']
-            # Obtener solo los puntos que no están marcados para eliminar
             points_data = [
                 data for data in formset.cleaned_data if data and not data.get('DELETE')
             ]
             
             context['method_name'] = dict(form.fields['method'].choices).get(method, method)
 
-            if method == 'vandermonde':
-                try:
+            try:
+                if method == 'vandermonde':
                     matrix_a, vector_b, coeffs, poly_str, plot_data = calculate_vandermonde(points_data)
                     context['results'] = {
+                        'type': 'vandermonde', # Añadimos un tipo
                         'points': points_data,
                         'matrixA': matrix_a,
                         'B': vector_b,
-                        'coeffs': [f"{c:.6f}" for c in coeffs], # Formatear para mostrar
+                        'coeffs': [f"{c:.6f}" for c in coeffs],
                         'polynom': poly_str,
-                        'plot_data': plot_data # Ya está en formato JSON string
+                        'plot_data': plot_data
                     }
-                except (np.linalg.LinAlgError, ValueError) as e:
-                    context['error_message'] = f"Error al calcular Vandermonde: {e}"
-                except Exception as e:
-                    context['error_message'] = f"Ocurrió un error inesperado: {e}"
+                
+                elif method == 'newton': # <-- AÑADIMOS NEWTON
+                    headers, table, coeffs, poly_str, poly_str_newton_native, plot_data = calculate_newton(points_data)
+                    context['results'] = {
+                        'type': 'newton', # Añadimos un tipo
+                        'points': points_data,
+                        'headers': headers,
+                        'table': table,
+                        'coeffs': coeffs, # Ya es lista
+                        'polynom': poly_str,
+                        'polynom_newton_form': poly_str_newton_native,
+                        'plot_data': plot_data
+                    }
+                
+                elif method == 'lagrange': # <-- AÑADIMOS LAGRANGE
+                    basis_table, native_poly, expanded_poly, plot_json = calculate_lagrange(points_data)
+                    context['results'] = {
+                        'type': 'lagrange',
+                        'points': points_data,
+                        'lagrange_basis_polynomials': basis_table,
+                        'polynom_lagrange_form': native_poly,
+                        'polynom': expanded_poly, # Para consistencia con el nombre de la forma expandida
+                        'plot_data': plot_json
+                    }
 
-            # Aquí podrías añadir bloques elif para otros métodos:
-            # elif method == 'newton':
-            #     # ... llamar a calculate_newton ...
-            #     pass
+                elif method == 'spline_linear': # <-- NUEVO
+                    coeffs_table, tracers, plot_json = calculate_linear_spline(points_data)
+                    context['results'] = {
+                        'type': 'spline_linear',
+                        'points': points_data,
+                        'coeffs_table': coeffs_table,
+                        'tracers_list': tracers,
+                        'plot_data': plot_json
+                    }
 
-            else:
-                context['error_message'] = f"El método '{method}' aún no está implementado."
+                elif method == 'spline_cubic': # <-- NUEVO
+                    coeffs_table, tracers, plot_json = calculate_cubic_spline(points_data)
+                    context['results'] = {
+                        'type': 'spline_cubic',
+                        'points': points_data,
+                        'coeffs_table': coeffs_table,
+                        'tracers_list': tracers,
+                        'plot_data': plot_json
+                    }
 
-        # Si los formularios no son válidos, los errores se mostrarán
-        # automáticamente a través del template, ya que pasamos
-        # `form` y `formset` con los datos POST y sus errores.
+                else:
+                    context['error_message'] = f"El método '{method}' aún no está implementado."
+
+            except (np.linalg.LinAlgError, ValueError) as e:
+                context['error_message'] = f"Error al calcular: {e}"
+            except Exception as e:
+                context['error_message'] = f"Ocurrió un error inesperado: {e}"
 
     return render(request, 'chapterThree/chapterThree.html', context)
 
