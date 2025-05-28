@@ -2,93 +2,210 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Informe de Comparación</title>
+    <title>{{ page_title_report|default:"Informe de Comparación de Métodos" }}</title>
     <style>
-        @page { size: a4 portrait; margin: 1.5cm; }
-        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 10pt; }
+         @page {
+        size: a4 portrait;
+        margin: 1.5cm;
+        }
+        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 10pt; color: #333333;}
         h1, h2, h3 { color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
-        h1 { font-size: 18pt; }
-        h2 { font-size: 14pt; }
-        h3 { font-size: 12pt; border-bottom: 1px dotted #eee; }
+        h1 { font-size: 18pt; text-align:center; }
+        h2 { font-size: 14pt; margin-top: 15px;}
+        h3 { font-size: 12pt; border-bottom-style: dotted; margin-top:15px;}
         .container { width: 100%; }
-        .alert { padding: 10px; margin-bottom: 15px; border: 1px solid transparent; border-radius: 4px; }
+        .alert { padding: 8px; margin-bottom: 12px; border: 1px solid transparent; border-radius: 4px; font-size: 9pt;}
         .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
         .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
         .card { border: 1px solid #ddd; margin-bottom: 15px; padding: 10px; }
         .card-header { font-weight: bold; background-color: #f5f5f5; padding: 5px; margin: -10px -10px 10px -10px; border-bottom: 1px solid #ddd; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 8pt;}
-        th, td { border: 1px solid #ccc; padding: 4px; text-align: left; }
-        th { background-color: #eee; }
-        ul { list-style: none; padding-left: 0; }
-        li { margin-bottom: 5px; }
-        .text-success { color: green; }
-        .text-danger { color: red; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 7.5pt;} /* Reducido para PDF */
+        th, td { border: 1px solid #aaa; padding: 4px; text-align: center; vertical-align: middle; word-wrap: break-word;}
+        th { background-color: #e9ecef; font-weight: bold;}
+        ul { list-style: disc; padding-left: 15px; }
+        li { margin-bottom: 3px; }
+        .text-success { color: #155724; }
+        .text-danger { color: #721c24; }
+        .method-card.best-method-card .card-header { background-color: green; color: white; }
+        .best-method-summary-row td { background-color: #d4edda !important; font-weight: bold; }
+        .table-responsive { /* No es tan relevante para PDF, pero no daña */ }
+        p { margin-bottom: 8px; line-height: 1.4; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Informe de Comparación de Métodos</h1>
-        <hr>
+        <h1>{{ page_title_report|default:"Informe Comparación - Sistemas de Ecuaciones No Lineales" }}</h1>
+        <hr style="margin-bottom:20px;">
 
-        {% if all_results %}
-            <h2>Parámetros de Entrada</h2>
+    {% if form_errors %}
+        <div class="alert alert-danger">
+            <h4>Hubo errores al procesar la entrada (no se generó reporte detallado).</h4>
+        </div>
+    {% endif %}
+
+    {% if global_error %}
+        <div class="alert alert-danger">{{ global_error }}</div>
+    {% elif all_results %}
+        <h2>Parámetros de Entrada Comunes</h2>
+        <div class="card">
             <ul>
-                <li><strong>Función f(x):</strong> {{ input_data.function_f }}</li>
-                <li><strong>Xi / X0:</strong> {{ input_data.x0_xi }}</li>
-                <li><strong>Xs / X1:</strong> {{ input_data.xs_x1 }}</li>
+                <li><strong>Función f(x):</strong> {{ input_data.function_f_plain|default:input_data.function_f }}</li>
+                {% if input_data.function_g %}
+                <li><strong>Función g(x):</strong> {{ input_data.function_g_plain|default:input_data.function_g }}</li>
+                {% endif %}
+                <li><strong>Valor(es) Inicial(es):</strong>
+                    Xi/X0 = {{ input_data.x0_xi }}
+                    {% if input_data.xs_x1 is not None %}, Xs/X1 = {{ input_data.xs_x1 }}{% endif %}
+                </li>
                 <li><strong>Tolerancia:</strong> {{ input_data.tolerance }}</li>
                 <li><strong>Iteraciones Máx:</strong> {{ input_data.n_iterations }}</li>
             </ul>
-            <hr>
+        </div>
 
-            <h2>Resultados Generales</h2>
-            {% if best_method %}
-                <div class="alert alert-success">
-                    <strong>Mejor Método:</strong> {{ best_method }} ({{ min_iter }} iteraciones).
-                </div>
-            {% else %}
-                <div class="alert alert-warning">
-                    Ningún método convergió.
-                </div>
-            {% endif %}
-            <hr>
+        <h2>Resultados Generales</h2>
+        {% if best_method %}
+            <div class="alert alert-success">
+                <strong>Mejor Método Identificado:</strong> {{ best_method }}
+                (convergió en {{ min_iterations }} iteraciones con un error de {{ best_method_data.error|floatformat:"2e" }}).
+            </div>
+        {% else %}
+            <div class="alert alert-warning">
+                Ninguno de los métodos evaluados pudo converger con los parámetros dados o todos fallaron.
+            </div>
+        {% endif %}
 
-            <h2>Resultados por Método</h2>
-            {% for name, data in all_results.items %}
-                <div class="card">
-                    <div class="card-header"><h3>{{ name }}</h3></div>
-                    <p><strong>Mensaje:</strong> <span class="{% if data.success %}text-success{% else %}text-danger{% endif %}">{{ data.message }}</span></p>
+        <h3 style="margin-top:15px;">Tabla Resumen de Convergencia</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Método</th>
+                    <th>Iteraciones</th>
+                    <th>Raíz Aprox. (x)</th>
+                    <th>Error Final</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, data in all_results.items %}
+                <tr {% if name == best_method %}class="best-method-summary-row"{% endif %}>
+                    <td><strong>{{ name }}</strong></td>
+                    <td>{{ data.iterations|default:"N/A" }}</td>
+                    <td>
+                        {% if data.success and data.root is not None %}
+                            {{ data.root|floatformat:10 }}
+                        {% else %}
+                            ---
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if data.success and data.error is not None %}
+                            {{ data.error|floatformat:"2e" }}
+                        {% else %}
+                            ---
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <hr style="margin-top:20px;">
+
+        <h2>Resultados Detallados por Método</h2>
+        {% for name, data in all_results.items %}
+            <div class="card method-card {% if name == best_method %}best-method-card{% endif %}">
+                <div class="card-header"><h3>{{ name }}</h3></div>
+                <p><strong>Mensaje:</strong> <span class="{% if data.success %}text-success{% else %}text-danger{% endif %}">{{ data.message }}</span></p>
+                {% if data.success %}
                     <p><strong>Iteraciones:</strong> {{ data.iterations }}</p>
-                    <p><strong>Raíz Aprox:</strong> {{ data.root|floatformat:10 }}</p>
+                    <p><strong>Raíz Aproximada:</strong> {{ data.root|floatformat:10 }}</p>
                     <p><strong>Error Final:</strong> {{ data.error|floatformat:"2e" }}</p>
+                {% endif %}
 
-                    {% if data.results %}
-                        <h5>Tabla de Iteraciones:</h5>
-                        <table>
+                {% if data.results %}
+                    <h5>Tabla de Iteraciones:</h5>
+                    <table>
+                        {% if name == "Bisección" or name == "Regla Falsa" %}
                             <thead>
                                 <tr>
-                                    <th>Iteración</th><th>xi</th><th>xs</th><th>xm</th><th>f(xm)</th><th>Error</th>
+                                    <th>i</th><th>a</th><th>x_m</th><th>b</th><th>f(x_m)</th><th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.results %} {# Mostrar todas las filas en PDF #}
+                                <tr>
+                                    <td>{{ row.Iteración }}</td>
+                                    <td>{{ row.xi|floatformat:7 }}</td>
+                                    <td>{{ row.xm|floatformat:7 }}</td>
+                                    <td>{{ row.xs|floatformat:7 }}</td>
+                                    <td>{{ row.f_xm|floatformat:"1e" }}</td>
+                                    <td>{{ row.Error|floatformat:"1e" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        {% elif name == "Punto Fijo" %}
+                            <thead>
+                                <tr>
+                                    <th>i</th><th>x_i</th><th>g(x_i)</th><th>f(x_i)</th><th>Error</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for row in data.results %}
                                 <tr>
                                     <td>{{ row.Iteración }}</td>
-                                    <td>{{ row.xi|floatformat:10 }}</td>
-                                    <td>{{ row.xs|floatformat:10|default:"---" }}</td>
-                                    <td>{{ row.xm|floatformat:10|default:"---" }}</td>
-                                    <td>{{ row.f_xm|floatformat:"1e"|default:"---" }}</td>
-                                    <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td>
+                                    <td>{{ row.xi|floatformat:7 }}</td>
+                                    <td>{{ row.xm|floatformat:7 }}</td>
+                                    <td>{{ row.f_xm|floatformat:"1e" }}</td>
+                                    <td>{{ row.Error|floatformat:"1e" }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
-                        </table>
-                    {% endif %}
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>No hay datos disponibles.</p>
-        {% endif %}
+                        {% elif name == "Newton" or name == "Newton Modificado" %}
+                             <thead>
+                                <tr>
+                                    <th>i</th><th>x_i</th><th>f(x_i)</th><th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.results %}
+                                <tr>
+                                    <td>{{ row.Iteración }}</td>
+                                    <td>{{ row.xi|floatformat:7 }}</td>
+                                    <td>{{ row.f_xm|floatformat:"1e" }}</td>
+                                    <td>{{ row.Error|floatformat:"1e" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        {% elif name == "Secante" %}
+                            <thead>
+                                <tr>
+                                    <th>i</th>
+                                    <th>x_i</th>
+                                    <th>f(x_i)</th>
+                                    <th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.results %}
+                                <tr>
+                                    <td>{{ row.Iteración }}</td>
+                                    <td>{{ row.xi|floatformat:7 }}</td>
+                                    <td>{{ row.f_xm|floatformat:"1e" }}</td>
+                                    <td>{{ row.Error|floatformat:"1e"|default:"---" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        {% else %}
+                            <tbody><tr><td colspan="6">Tabla de iteraciones no disponible.</td></tr></tbody>
+                        {% endif %}
+                    </table>
+                {% elif data.success %} {# Si tuvo éxito pero no hay 'results' detallados (raro pero posible) #}
+                    <p>No se generaron iteraciones detalladas para este método.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No se han procesado datos para el informe. Por favor, inténtalo de nuevo desde el formulario principal.</p>
+    {% endif %}
     </div>
 </body>
 </html>

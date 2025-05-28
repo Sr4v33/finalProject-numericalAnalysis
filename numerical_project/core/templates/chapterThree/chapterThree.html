@@ -119,8 +119,28 @@
                     {% if form.method.errors %}<div class="field-error">{{ form.method.errors.as_text }}</div>{% endif %}
                 </div>
 
+
+                <div id="comparison-section" style="display: none;">
+                    <div class="alert alert-info py-2">
+                        <strong>Ingresa un punto (X, Y) conocido (diferente a los puntos de interpolación) para calcular y comparar el error.</strong>
+                    </div>
+                    <div class="row">
+                        <div class="col mb-2">
+                            {{ form.x_eval.label_tag }}
+                            {{ form.x_eval }}
+                            {% if form.x_eval.errors %}<div class="field-error">{{ form.x_eval.errors.as_text }}</div>{% endif %}
+                        </div>
+                        <div class="col mb-2">
+                            {{ form.y_eval.label_tag }}
+                            {{ form.y_eval }}
+                            {% if form.y_eval.errors %}<div class="field-error">{{ form.y_eval.errors.as_text }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+
                 <button type="submit" class="btn btn-primary"><i class="bi bi-calculator"></i> Calcular</button>
-                <button type="submit" class="btn btn-success ms-2" formaction="{% url 'chapterThree:compare_methods_ch3' %}">
+                <button type="submit" class="btn btn-success ms-2" formaction="{% url 'chapterThree:compare_methods_ch3' %}" id="compareBtn">
                     <i class="bi bi-bar-chart-steps"></i> Comparar Todos
                 </button>
             </form>
@@ -341,7 +361,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-danger mt-2 graph-button"
+                    <button type="button" class="btn btn-danger mt-2 graph-button-linear"
                             data-plot='{{ results.plot_data|safe }}'
                             data-title="{{ results.polynom }}">
                         <i class="bi bi-graph-up"></i> Graficar Spline Lineal
@@ -350,60 +370,63 @@
             {% endif %}
 
 
-        {% if results.type == 'spline_cubic' %}
-            <div class="vandermonde-section">
-                <h4>Spline Cúbico - Coeficientes por Tramo $S_i(x) = Ax^3 + Bx^2 + Cx + D$:</h4>
-                <div class="table-responsive mb-3">
-                    <table class="table table-sm table-bordered text-center" style="text-align: center;">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>$i$ (Tramo $x_i \dots x_{i+1}$)</th>
-                                <th>Coeff1 ($A_i$)</th>
-                                <th>Coeff2 ($B_i$)</th>
-                                <th>Coeff3 ($C_i$)</th>
-                                <th>Coeff4 ($D_i$)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in results.coeffs_table %}
-                            <tr> 
-                                <td>$$ {{ item.i }} $$</td>
-                                <td>$$ {{ item.coeff1|floatformat:6 }} $$</td>
-                                <td>$$ {{ item.coeff2|floatformat:6 }} $$</td>
-                                <td>$$ {{ item.coeff3|floatformat:6 }} $$</td>
-                                <td>$$ {{ item.coeff4|floatformat:6 }} $$</td>
-                            </tr> 
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            {% if results.type == 'spline_cubic' %}
+                <div class="vandermonde-section">
+                    <h4>Spline Cúbico - Coeficientes por Tramo $S_i(x) = Ax^3 + Bx^2 + Cx + D$:</h4>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered text-center" style="text-align: center;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>$i$ (Tramo $x_i \dots x_{i+1}$)</th>
+                                    <th>Coeff1 ($A_i$)</th>
+                                    <th>Coeff2 ($B_i$)</th>
+                                    <th>Coeff3 ($C_i$)</th>
+                                    <th>Coeff4 ($D_i$)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in results.coeffs_table %}
+                                <tr> 
+                                    <td>$$ {{ item.i }} $$</td>
+                                    <td>$$ {{ item.coeff1|floatformat:6 }} $$</td>
+                                    <td>$$ {{ item.coeff2|floatformat:6 }} $$</td>
+                                    <td>$$ {{ item.coeff3|floatformat:6 }} $$</td>
+                                    <td>$$ {{ item.coeff4|floatformat:6 }} $$</td>
+                                </tr> 
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
 
-                <h4>Spline Cúbico - Trazadores por Tramo:</h4>
-                <div class="table-responsive mb-3">
-                    <table class="table table-sm table-bordered" style="text-align: center;">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>$i$</th>
-                                <th>Trazador $S_i(x)$ para $x \in [x_i, x_{i+1}]$</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in results.tracers_list %}
-                            <tr>
-                                <td>$$ {{ item.i }} $$</td>
-                                <td>$$ S_{{item.i}}(x) = {{ item.tracer_str }} $$</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <h4>Spline Cúbico - Trazadores por Tramo:</h4>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered" style="text-align: center;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>$i$</th>
+                                    <th>Trazador $S_i(x)$ para $x \in [x_i, x_{i+1}]$</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in results.tracers_list %}
+                                <tr>
+                                    <td>$$ {{ item.i }} $$</td>
+                                    <td>$$ S_{{item.i}}(x) = {{ item.tracer_str }} $$</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-danger mt-2 graph-button"
+                            data-plot='{{ results.plot_data|safe }}'
+                            data-title="{{ results.polynom }}">
+                        <i class="bi bi-graph-up"></i> Graficar Spline Cúbico
+                    </button>
                 </div>
-                 <button type="button" class="btn btn-danger mt-2 graph-button"
-                        data-plot='{{ results.plot_data|safe }}'
-                        data-title="Spline Cúbico Natural">
-                    <i class="bi bi-graph-up"></i> Graficar Spline Cúbico
-                </button>
-            </div>
-        {% endif %}
+            {% endif %}
+
+        
+
 
 
         </div>
@@ -448,126 +471,190 @@
 
 {% block extra_scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tableBody = document.querySelector('#pointsTable tbody');
-    const addRowButton = document.getElementById('addRow');
-    const formsetPrefix = '{{ formset.prefix }}'; // Get prefix from formset
-    const maxRows = 8; // Max points
-    const minRows = parseInt(document.getElementById('pointsTable').dataset.minNum, 10);
 
-    // Function to update TOTAL_FORMS
-    function updateTotalForms() {
-        const totalFormsInput = document.querySelector(`input[name="${formsetPrefix}-TOTAL_FORMS"]`);
-        const currentRows = tableBody.querySelectorAll('tr').length;
-        totalFormsInput.value = currentRows;
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        const tableBody = document.querySelector('#pointsTable tbody');
+        const addRowButton = document.getElementById('addRow');
+        const formsetPrefix = '{{ formset.prefix }}'; // Get prefix from formset
+        const maxRows = 8; // Max points
+        const minRows = parseInt(document.getElementById('pointsTable').dataset.minNum, 10);
 
-    // Function to update form indices
-    function updateFormIndices() {
-        const rows = tableBody.querySelectorAll('tr');
-        rows.forEach((row, index) => {
-            row.querySelectorAll('input, select, textarea').forEach(input => {
-                const name = input.getAttribute('name');
-                if (name) {
-                    input.setAttribute('name', name.replace(/-(\d+)-/, `-${index}-`));
+
+        const methodSelect = document.getElementById('method-select');
+        const comparisonSection = document.getElementById('comparison-section');
+
+        function toggleComparisonSection() {
+        if (methodSelect.value === 'compare') {
+            comparisonSection.style.display = 'block';
+        } else {
+            comparisonSection.style.display = 'none';
+        }
+        }
+
+        // Ejecutar al cargar la página
+        toggleComparisonSection();
+
+        methodSelect.addEventListener('change', toggleComparisonSection);
+
+        // Function to update TOTAL_FORMS
+        function updateTotalForms() {
+            const totalFormsInput = document.querySelector(`input[name="${formsetPrefix}-TOTAL_FORMS"]`);
+            const currentRows = tableBody.querySelectorAll('tr').length;
+            totalFormsInput.value = currentRows;
+        }
+
+        const compareBtn = document.getElementById('compareBtn');
+        const xEvalInput = document.getElementById('id_x_eval'); // <-- Usa el ID generado por Django
+        const yEvalInput = document.getElementById('id_y_eval'); // <-- Usa el ID generado por Django
+
+
+        // Validación antes de enviar a comparar
+        compareBtn.addEventListener('click', function(event) {
+            const xVal = xEvalInput.value;
+            const yVal = yEvalInput.value;
+
+            if (xVal === '' || yVal === '') {
+                alert('Por favor, selecciona "Comparar todos" como método e ingresa los valores de X e Y para la evaluación antes de comparar.');
+                event.preventDefault(); // Detiene el envío del formulario
+            }
+        });
+
+        
+
+        // Function to update form indices
+        function updateFormIndices() {
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                row.querySelectorAll('input, select, textarea').forEach(input => {
+                    const name = input.getAttribute('name');
+                    if (name) {
+                        input.setAttribute('name', name.replace(/-(\d+)-/, `-${index}-`));
+                    }
+                    const id = input.getAttribute('id');
+                    if (id) {
+                        input.setAttribute('id', id.replace(/-(\d+)-/, `-${index}-`));
+                    }
+                });
+            });
+        }
+
+        // Add Row
+        addRowButton.addEventListener('click', () => {
+            if (tableBody.rows.length >= maxRows) {
+                alert(`Solo puedes ingresar hasta ${maxRows} puntos.`);
+                return;
+            }
+
+            const newRow = tableBody.rows[0].cloneNode(true);
+            const newIndex = tableBody.rows.length;
+
+            // Clear input values and remove error messages in the new row
+            newRow.querySelectorAll('input[type="number"], input[type="text"]').forEach(i => i.value = '');
+            newRow.querySelectorAll('.field-error').forEach(e => e.remove());
+            
+            // Ensure hidden fields are correctly handled (clear ID, uncheck DELETE)
+            const idInput = newRow.querySelector(`input[name$="-id"]`);
+            if (idInput) idInput.value = '';
+            const deleteInput = newRow.querySelector(`input[name$="-DELETE"]`);
+            if (deleteInput) deleteInput.checked = false;
+
+            newRow.style.display = ''; // Ensure it's visible if cloned from a hidden one
+            tableBody.appendChild(newRow);
+            
+            updateTotalForms();
+            updateFormIndices(); // Update indices after adding
+        });
+
+        // Remove Row
+        tableBody.addEventListener('click', e => {
+            if (e.target.closest('.remove-row')) {
+                const rowToRemove = e.target.closest('tr');
+                
+                if (tableBody.rows.length <= minRows) {
+                    alert(`Debes ingresar al menos ${minRows} puntos.`);
+                    return;
                 }
-                const id = input.getAttribute('id');
-                 if (id) {
-                    input.setAttribute('id', id.replace(/-(\d+)-/, `-${index}-`));
+
+                const deleteInput = rowToRemove.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                if (deleteInput) {
+                    // If using formset with can_delete=True, check the box and hide
+                    deleteInput.checked = true;
+                    rowToRemove.style.display = 'none';
+                } else {
+                    // Otherwise, just remove the row (be careful, this might not work perfectly with formsets without DELETE)
+                    rowToRemove.remove();
+                }
+
+                updateTotalForms();
+                updateFormIndices(); // Update indices after removing
+            }
+        });
+
+        // Graphing Logic
+        const graphBaseUrl = "{% url 'chapterThree:graph_ch3' %}";
+        document.querySelectorAll('.graph-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const plotDataStr = this.getAttribute('data-plot');
+                const title = this.getAttribute('data-title');
+
+                if (!plotDataStr) {
+                    alert("No hay datos para graficar.");
+                    return;
+                }
+                function decodeUnicode(str) {
+                    return str.replace(/\\u[\dA-F]{4}/gi, 
+                        match => String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16)));
+                }
+                try {
+                    
+                    const cleanedStr = decodeUnicode(plotDataStr);
+                    const plotData = JSON.parse(cleanedStr);
+                    const params = new URLSearchParams({
+                        original_x: JSON.stringify(plotData.original_x),
+                        original_y: JSON.stringify(plotData.original_y),
+                        interpolated_x: JSON.stringify(plotData.interpolated_x),
+                        interpolated_y: JSON.stringify(plotData.interpolated_y),
+                        function_name: title
+                    });
+                    window.open(`${graphBaseUrl}?${params.toString()}`, '_blank');
+                } catch(e) {
+                    console.error("Error parsing plot data:", e, plotDataStr);
+                    alert("Error al preparar los datos para el gráfico.");
                 }
             });
         });
-    }
 
-    // Add Row
-    addRowButton.addEventListener('click', () => {
-        if (tableBody.rows.length >= maxRows) {
-            alert(`Solo puedes ingresar hasta ${maxRows} puntos.`);
-            return;
-        }
-
-        const newRow = tableBody.rows[0].cloneNode(true);
-        const newIndex = tableBody.rows.length;
-
-        // Clear input values and remove error messages in the new row
-        newRow.querySelectorAll('input[type="number"], input[type="text"]').forEach(i => i.value = '');
-        newRow.querySelectorAll('.field-error').forEach(e => e.remove());
-        
-        // Ensure hidden fields are correctly handled (clear ID, uncheck DELETE)
-        const idInput = newRow.querySelector(`input[name$="-id"]`);
-        if (idInput) idInput.value = '';
-        const deleteInput = newRow.querySelector(`input[name$="-DELETE"]`);
-        if (deleteInput) deleteInput.checked = false;
-
-        newRow.style.display = ''; // Ensure it's visible if cloned from a hidden one
-        tableBody.appendChild(newRow);
-        
+        // Initial setup calls
         updateTotalForms();
-        updateFormIndices(); // Update indices after adding
+        updateFormIndices(); // Ensure indices are correct on load
     });
 
-    // Remove Row
-    tableBody.addEventListener('click', e => {
-        if (e.target.closest('.remove-row')) {
-            const rowToRemove = e.target.closest('tr');
-            
-            if (tableBody.rows.length <= minRows) {
-                 alert(`Debes ingresar al menos ${minRows} puntos.`);
-                 return;
-            }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Busca todos los botones de gráfica
+        const graphButtons = document.querySelectorAll('.graph-button-linear');
 
-            const deleteInput = rowToRemove.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            if (deleteInput) {
-                // If using formset with can_delete=True, check the box and hide
-                deleteInput.checked = true;
-                rowToRemove.style.display = 'none';
-            } else {
-                // Otherwise, just remove the row (be careful, this might not work perfectly with formsets without DELETE)
-                rowToRemove.remove();
-            }
+        graphButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const plotData = this.dataset.plot; // Obtiene el JSON como string
+                const functionName = this.dataset.title; // Obtiene el título
 
-            updateTotalForms();
-            updateFormIndices(); // Update indices after removing
-        }
-    });
+                if (!plotData) {
+                    alert("No hay datos de gráfica para mostrar.");
+                    return;
+                }
 
-    // Graphing Logic
-    const graphBaseUrl = "{% url 'chapterThree:graph_ch3' %}";
-    document.querySelectorAll('.graph-button').forEach(button => {
-        button.addEventListener('click', function() {
-            const plotDataStr = this.getAttribute('data-plot');
-            const title = this.getAttribute('data-title');
+                // Codifica los datos para la URL
+                const encodedPlotData = encodeURIComponent(plotData);
+                const encodedFunctionName = encodeURIComponent(functionName);
 
-            if (!plotDataStr) {
-                alert("No hay datos para graficar.");
-                return;
-            }
-            function decodeUnicode(str) {
-                return str.replace(/\\u[\dA-F]{4}/gi, 
-                    match => String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16)));
-            }
-            try {
-                
-                const cleanedStr = decodeUnicode(plotDataStr);
-                const plotData = JSON.parse(cleanedStr);
-                const params = new URLSearchParams({
-                    original_x: JSON.stringify(plotData.original_x),
-                    original_y: JSON.stringify(plotData.original_y),
-                    interpolated_x: JSON.stringify(plotData.interpolated_x),
-                    interpolated_y: JSON.stringify(plotData.interpolated_y),
-                    function_name: title
-                });
-                window.open(`${graphBaseUrl}?${params.toString()}`, '_blank');
-            } catch(e) {
-                console.error("Error parsing plot data:", e, plotDataStr);
-                alert("Error al preparar los datos para el gráfico.");
-            }
+
+                const graphUrl = `{% url 'chapterThree:graph_ch3' %}?plot_data=${encodedPlotData}&function_name=${encodedFunctionName}`;
+
+                // Abre la URL en una nueva pestaña
+                window.open(graphUrl, '_blank');
+            });
         });
     });
-
-    // Initial setup calls
-    updateTotalForms();
-    updateFormIndices(); // Ensure indices are correct on load
-});
 </script>
 {% endblock %}

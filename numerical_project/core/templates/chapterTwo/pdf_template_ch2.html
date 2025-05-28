@@ -4,57 +4,187 @@
     <meta charset="UTF-8">
     <title>Informe Comparación - Cap 2</title>
     <style>
-        @page { size: a4 portrait; margin: 1.5cm; }
-        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 9pt; line-height: 1.2; }
-        h1, h2, h3 { color: #333; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin-bottom: 8px; }
-        h1 { font-size: 16pt; } h2 { font-size: 12pt; } h3 { font-size: 10pt; border-bottom-style: dotted; }
-        .alert { padding: 8px; margin-bottom: 10px; border: 1px solid transparent; border-radius: 4px; }
+        @page {
+            size: a4 portrait;
+            margin: 1.5cm;
+        }
+        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 9pt; color: #333; line-height: 1.3; }
+        h1 { font-size: 16pt; text-align:center; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px;}
+        h2 { font-size: 13pt; margin-top: 18px; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px;}
+        h3 { font-size: 11pt; margin-top:12px; margin-bottom: 6px; color: #444;}
+        .container { width: 100%; }
+        .alert { padding: 7px; margin-bottom: 10px; border: 1px solid transparent; border-radius: 3px; font-size: 8.5pt;}
         .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
         .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
-        .card { border: 1px solid #ddd; margin-bottom: 10px; padding: 8px; }
-        .card-header { font-weight: bold; background-color: #f5f5f5; padding: 4px; margin: -8px -8px 8px -8px; border-bottom: 1px solid #ddd; }
-        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8pt;}
-        th, td { border: 1px solid #ccc; padding: 3px; text-align: left; word-break: break-all;}
-        th { background-color: #eee; }
-        code { font-family: monospace; background-color: #f0f0f0; padding: 1px 3px; border-radius: 2px; }
-        ul { padding-left: 20px; margin-bottom: 8px; }
-        .text-success { color: #155724; } .text-danger { color: #721c24; }
+        .card { border: 1px solid #ddd; margin-bottom: 12px; padding: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 7.5pt;}
+        th, td { border: 1px solid #aaa; padding: 4px; text-align: center; vertical-align: top; word-wrap: break-word;}
+        th { background-color: #e9ecef; font-weight: bold;}
+        ul { list-style: disc; padding-left: 18px; margin-top: 0; margin-bottom: 8px; }
+        li { margin-bottom: 3px; }
+        .text-success { color: #155724; }
+        .text-danger { color: #721c24; }
+        .best-method-highlight td { background-color: #d4edda !important; font-weight: bold; }
+        .matrix-display-pdf {
+            font-family: "Courier New", monospace;
+            white-space: pre;
+            font-size: 7pt;
+            padding: 3px;
+            border: 1px solid #eee;
+            background-color: #f9f9f9;
+            display: block; 
+            margin-bottom: 5px;
+        }
+        .solution-vector-pdf td {
+            white-space: pre-line;
+            text-align: left;
+            font-family: "Courier New", monospace;
+            font-size: 7pt;
+        }
+        .small-text { font-size: 7pt; font-weight:normal; }
     </style>
 </head>
 <body>
-    <h1>Informe Comparación - Sistemas Lineales</h1> <hr>
-    {% if all_method_outputs %}
-        <h2>Parámetros de Entrada</h2>
-        <p><strong>Matriz A:</strong> <code>{{ input_data.A_str }}</code></p>
-        <p><strong>Vector b:</strong> <code>{{ input_data.b_str }}</code></p>
-        <p><strong>Vector x0:</strong> <code>{{ input_data.x0_str }}</code></p>
-        <p><strong>Tolerancia:</strong> {{ input_data.tol }} | <strong>Iter. Máx:</strong> {{ input_data.niter }} | <strong>Omega (SOR):</strong> {{ input_data.omega|default:"N/A" }}</p>
-        <hr>
-        <h2>Resultados Generales</h2>
-        {% if best_method %}<div class="alert alert-success"><strong>Mejor Método:</strong> {{ best_method }} ({{ min_iter }} iteraciones).</div>
-        {% else %}<div class="alert alert-warning">Ningún método destacó.</div>{% endif %}
-        <hr>
-        <h2>Resultados por Método</h2>
-        {% for name, data_tuple in all_method_outputs.items %}
-            {% with results=data_tuple.0 message=data_tuple.1 spectral_radius=data_tuple.2 convergence_info=data_tuple.3 iterations=data_tuple.4 %}
+    <div class="container">
+        <h1>{{ page_title_report|default:"Informe Comparación - Sistemas Lineales" }}</h1>
+
+        {% if global_error %}
+            <div class="alert alert-danger"><strong>Error Global:</strong> {{ global_error }}</div>
+        {% elif all_method_outputs %}
+            <h2>Parámetros de Entrada</h2>
             <div class="card">
-                <div class="card-header"><h3>{{ name }}</h3></div>
-                <p><strong>Mensaje Final:</strong> <span class="{% if 'Convergió' in message %}text-success{% else %}text-danger{% endif %}">{{ message }}</span></p>
-                <p><strong>Radio Espectral ρ(T):</strong> {% if spectral_radius == "inf" or spectral_radius > 10000 %} Infinito/Muy Grande {% else %} {{ spectral_radius|floatformat:7 }} {% endif %}</p>
-                <p><strong>Convergencia Teórica:</strong> {{ convergence_info }}</p>
-                <p><strong>Iteraciones:</strong> {{ iterations }}</p>
-                {% if results %}
-                    <h5>Tabla de Iteraciones:</h5>
-                    <table><thead><tr><th>Iter.</th>
-                        {% for i in vector_size|rjust:0|slice:"1:" %}<th>x<sub>{{ forloop.counter }}</sub></th>{% endfor %}
-                        <th>Error</th></tr></thead>
-                        <tbody>
-                        {% for row in results %}<tr><td>{{ row.Iteración }}</td>
-                            {% for val in row.x_vector %}<td>{{ val|floatformat:7 }}</td>{% endfor %}
-                            <td>{{ row.Error|floatformat:"2e"|default:"---" }}</td></tr>
-                        {% endfor %}</tbody></table>
-                {% endif %}</div>
-            {% endwith %}{% endfor %}
-    {% else %}<p>No hay datos.</p>{% endif %}
+                <p><strong>Matriz A:</strong></p>
+                <div class="matrix-display-pdf">{{ input_data.A_str_display|default:input_data.A_str|linebreaksbr }}</div>
+                <p><strong>Vector b:</strong></p>
+                <div class="matrix-display-pdf">{{ input_data.b_str_display|default:input_data.b_str|linebreaksbr }}</div>
+                <p><strong>Vector Inicial x<sub>0</sub>:</strong></p>
+                <div class="matrix-display-pdf">{{ input_data.x0_str_display|default:input_data.x0_str|linebreaksbr }}</div>
+                <p><strong>Tolerancia (tol):</strong> {{ input_data.tol }}</p>
+                <p><strong>Iteraciones Máximas (niter):</strong> {{ input_data.niter }}</p>
+                <p><strong>Parámetro Omega (SOR):</strong> {{ input_data.omega|default:"N/A" }}</p>
+            </div>
+
+            <h2>Resultados Generales</h2>
+            {% if best_method %}
+                <div class="alert alert-success">
+                    <strong>Mejor Método Identificado:</strong> {{ best_method }} 
+                    (convergió en {{ min_iter }} iteraciones).
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    Ninguno de los métodos pudo determinarse como el mejor con los criterios aplicados.
+                </div>
+            {% endif %}
+
+            <h3 class="mt-4">Tabla Resumen de Resultados</h3>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Método</th>
+                            <th>Iteraciones</th>
+                            <th>Solución Aproximada (x)</th>
+                            <th>Error Final (Norma)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for name, data_tuple in all_method_outputs.items %}
+                            {% with last_iter=data_tuple.0|last %}
+                            <tr {% if name == best_method %}class="best-method-summary-row"{% endif %}>
+                                <td><strong>{{ name }}</strong></td>
+                                <td>{{ data_tuple.4|default:"N/A" }}</td>
+                                <td>
+                                    {% if data_tuple.0 and last_iter and last_iter.x_vector %}
+                                        (
+                                        {% for val in last_iter.x_vector %}
+                                            {{ val|floatformat:6 }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                        )
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if last_iter and last_iter.Error is not None and last_iter.Error == last_iter.Error %}
+                                        {{ last_iter.Error|floatformat:"2e" }}
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>Resultados por Método</h2>
+            {% for name, data_tuple in all_method_outputs.items %}
+                <div class="card">
+                    <h3>{{ name }}</h3>
+                    <p><strong>Mensaje Final:</strong> 
+                        <span class="{% if 'Convergió' in data_tuple.1 %}text-success{% else %}text-danger{% endif %}">
+                            {{ data_tuple.1 }}
+                        </span>
+                    </p>
+                    <p><strong>Radio Espectral ρ(T):</strong>
+                        {% if data_tuple.2 == "inf" or data_tuple.2 > 10000 %}
+                            Infinito/Muy Grande
+                        {% else %}
+                            {{ data_tuple.2|floatformat:7 }}
+                        {% endif %}
+                    </p>
+                    <p><strong>Convergencia Teórica:</strong> {{ data_tuple.3 }}</p>
+                    <p><strong>Iteraciones:</strong> {{ data_tuple.4 }}</p>
+
+                    {% if data_tuple.0 %}
+                        <h5>Tabla de Iteraciones:</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Iteración</th>
+                                        <th>x_i (vector)</th>
+                                        <th>Error</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in data_tuple.0 %}
+                                        <tr>
+                                            <td>{{ row.Iteración }}</td>
+                                            <td>
+                                                {% if row.x_vector %}
+                                                    (
+                                                    {% for val in row.x_vector %}
+                                                        {{ val|floatformat:6 }}{% if not forloop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                    )
+                                                {% else %}
+                                                    ---
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if row.Error is not None and row.Error == row.Error and row.Error != "Inf/NaN" %}
+                                                    {{ row.Error|floatformat:"2e" }}
+                                                {% elif row.Error == "Inf/NaN" %}
+                                                    Inf
+                                                {% else %}
+                                                    ---
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% elif data_tuple.0.success %}
+                        <p>No se generaron iteraciones detalladas.</p>
+                    {% else %}
+                        <p>No se generaron iteraciones (método falló o no convergió).</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
 </body>
 </html>

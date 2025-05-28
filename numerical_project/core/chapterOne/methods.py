@@ -85,23 +85,39 @@ def regla_falsa(f, xi, xs, tol, niter):
 # --- Punto Fijo ---
 # ==============================================================================
 
-def punto_fijo(g, x0, tol, niter):
+def punto_fijo(f, g, x0, tol, niter):
     resultados = []
     c = 0
     error = tol + 1
     xn = x0
-    resultados.append({'Iteración': c, 'xi': xn, 'xs': np.nan, 'xm': np.nan, 'f(xm)': np.nan, 'Error': np.nan})
+    gn = g(xn) 
+    f_x = f(xn)
+    
+
+    resultados.append({'Iteración': c, 'xi': xn, 'xs': np.nan, 'xm': gn, 'f(xm)': f_x, 'Error': np.nan})
+    
     while error > tol and c < niter:
         try:
-            xn_nuevo = g(xn)
-            error = abs(xn_nuevo - xn)
-            c += 1
-            xn = xn_nuevo
-            resultados.append({'Iteración': c, 'xi': xn, 'xs': np.nan, 'xm': g(xn), 'f(xm)': np.nan, 'Error': error})
-        except Exception as e: return resultados, f"Error al evaluar g(x): {e}"
-    if error < tol: mensaje = f'{xn:.10f} es aprox. punto fijo con tol={tol:.1e}'
-    else: mensaje = f'Fracasó en {niter} iteraciones.'
+            x0 = xn  
+            xn = g(x0)  
+            c += 1  
+            f_xn = f(xn)  
+            error = abs(x0 - xn)  
+            
+
+            resultados.append({'Iteración': c, 'xi': xn, 'xs': np.nan, 'xm': g(xn), 'f(xm)': f_xn, 'Error': error})
+        
+        except Exception as e:
+            return resultados, f"Error al evaluar g(x): {e}"
+    
+    if error < tol:
+        mensaje = f'{xn:.10f} es aprox. raíz con tol={tol:.1e}'
+    else:
+        mensaje = f'Fracasó en {niter} iteraciones.'
+    
     return resultados, mensaje
+
+
 
 
 # ==============================================================================
@@ -124,7 +140,7 @@ def newton(f, f_prime, x0, tol, niter):
         fn = f(xn)
         c += 1
         resultados.append({'Iteración': c, 'xi': xn, 'xs': fpn, 'xm': xn_nuevo, 'f(xm)': fn, 'Error': error})
-    if fn == 0: mensaje = f'{xn:.10f} es raíz.'
+    if fn == 0: mensaje = f'{xn:.10f} es aprox. raíz con tol={tol:.1e}.'
     elif error < tol: mensaje = f'{xn:.10f} es aprox. raíz con tol={tol:.1e}'
     else: mensaje = f'Fracasó en {niter} iteraciones.'
     return resultados, mensaje
@@ -134,23 +150,78 @@ def newton(f, f_prime, x0, tol, niter):
 # --- Secante ---
 # ==============================================================================
 
+import numpy as np
+
 def secante(f, x0, x1, tol, niter):
+    """
+    Implementa el método de la secante para encontrar una raíz de la función f.
+
+    Args:
+        f (function): La función para la cual se busca la raíz.
+        x0 (float): Primera aproximación inicial.
+        x1 (float): Segunda aproximación inicial.
+        tol (float): La tolerancia para el criterio de parada (error).
+        niter (int): El número máximo de iteraciones permitidas.
+
+    Returns:
+        tuple: Una tupla que contiene:
+            - list: Una lista de diccionarios, donde cada diccionario representa
+                    una iteración con las claves 'Iteration (i)', 'xi', 'f(xi)', 'E'.
+            - str: Un mensaje indicando el resultado del método.
+    """
     resultados = []
-    c = 0
-    error = tol + 1
-    f0 = f(x0)
-    if f0 == 0: return [], f'{x0} es raíz.'
-    f1 = f(x1)
-    resultados.append({'Iteración': c, 'xi': x0, 'xs': x1, 'xm': x1, 'f(xm)': f1, 'Error': np.nan})
-    while error > tol and f1 != 0 and c < niter:
-        if (f1 - f0) == 0: return resultados, f"División por cero (f(x1) - f(x0) = 0)."
-        x_nuevo = x1 - f1 * (x1 - x0) / (f1 - f0)
-        error = abs(x_nuevo - x1)
-        x0 = x1; f0 = f1; x1 = x_nuevo; f1 = f(x1); c += 1
-        resultados.append({'Iteración': c, 'xi': x0, 'xs': x1, 'xm': x_nuevo, 'f(xm)': f1, 'Error': error})
-    if f1 == 0: mensaje = f'{x1:.10f} es raíz.'
-    elif error < tol: mensaje = f'{x1:.10f} es aprox. raíz con tol={tol:.1e}'
-    else: mensaje = f'Fracasó en {niter} iteraciones.'
+    c = 0  # Contador de iteraciones
+
+    fx0 = f(x0)
+    # Añadir x0 (Iteración 0)
+    resultados.append({'Iteración': c, 'xi': x0, 'xs': np.nan, 'xm': np.nan, 'f(xm)': fx0, 'Error': np.nan})
+
+    if fx0 == 0:
+        return resultados, f"{x0:.10f} es una raíz."
+
+    if x0 == x1:
+        return resultados, f"Error: x0 y x1 no pueden ser iguales (x0 = {x0}, x1 = {x1})."
+
+    c += 1
+    fx1 = f(x1)
+    # Añadir x1 (Iteración 1)
+    # El error E = |x1 - x0| podría ir aquí, pero seguimos la imagen 
+    # donde el primer error aparece en la iteración 2.
+    resultados.append({'Iteración': c, 'xi': x1, 'xs': x0, 'xm': np.nan, 'f(xm)': fx1, 'Error': np.nan}) 
+
+    if fx1 == 0:
+        return resultados, f"{x1:.10f} es una raíz."
+
+    error = tol + 1  # Inicializar error para entrar al bucle
+
+    # Bucle principal del método de la secante
+    while error > tol and fx1 != 0 and c < niter:
+        denominador = fx1 - fx0
+        
+        if denominador == 0:
+            return resultados, f"División por cero (f({x1:.10f}) - f({x0:.10f}) = 0). El método no puede continuar."
+
+        x_nuevo = x1 - (fx1 * (x1 - x0)) / denominador
+        error = abs(x_nuevo - x1)  # Error: |xi - x(i-1)|
+        
+        x0 = x1
+        fx0 = fx1
+        x1 = x_nuevo
+        fx1 = f(x1)
+        
+        c += 1
+        
+        # Añadir la iteración actual a los resultados
+        resultados.append({'Iteración': c, 'xi': x1, 'xs': x0, 'xm': x_nuevo, 'f(xm)': fx1, 'Error': error})
+
+    # Determinar el mensaje final
+    if fx1 == 0:
+        mensaje = f'{x1:.10f} es una raíz.'
+    elif error < tol:
+        mensaje = f'{x1:.10f} es una aproximación a la raíz con tol={tol:.1e}'
+    else:
+        mensaje = f'Fracasó en {niter} iteraciones.'
+        
     return resultados, mensaje
 
 
@@ -220,9 +291,9 @@ def newton_modificado(f, f_prime, f_double_prime, x0, tol, niter):
 
 
     if fn == 0:
-        mensaje = f'{xn:.10f} es raíz.'
+        mensaje = f'x = {xn:.10f} es raíz.'
     elif error <= tol:
-        mensaje = f'{xn:.10f} es una aproximación de la raíz con tolerancia={tol:.1e}'
+        mensaje = f'{xn:.10f} es aprox. raíz con tol={tol:.1e}'
     elif c == niter:
         mensaje = f'Se alcanzó el número máximo de {niter} iteraciones. No se encontró raíz con la tolerancia dada.'
     else:

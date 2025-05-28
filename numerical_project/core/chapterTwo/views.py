@@ -187,28 +187,49 @@ def run_all_ch2_methods(A, b, x0, tol, niter, omega):
 def find_best_ch2_method(all_method_outputs, tol):
     best_method_name = None
     min_iterations = float('inf')
-    
+    min_error_at_min_iterations = float('inf') # Para desempatar
+    best_method_priority = 3 # 1: ρ<1 y tol, 2: solo tol, 3: ninguno
+
     for name, (res_list, msg, spec_rad, conv_msg, iterations) in all_method_outputs.items():
-        converged_by_rho = spec_rad < 1
+        current_priority = 3 # Por defecto, no es el mejor
+        converged_by_rho = False
+        if not np.isinf(spec_rad) and not np.isnan(spec_rad): # Solo si el radio es un número válido
+             converged_by_rho = spec_rad < 1
+
         converged_by_tol = False
-        if res_list:
-            final_error = res_list[-1]['Error']
-            if not np.isnan(final_error) and final_error <= tol:
-                converged_by_tol = True
+        final_error = float('inf') # Asumir el peor error
+        if res_list and 'Error' in res_list[-1]:
+            error_val = res_list[-1]['Error']
+            if not np.isnan(error_val): # Solo si el error no es NaN
+                final_error = error_val
+                if final_error <= tol:
+                    converged_by_tol = True
         
-        # Prioridad: ρ(T) < 1 y convergió por tolerancia
         if converged_by_rho and converged_by_tol:
+            current_priority = 1
+        elif converged_by_tol:
+            current_priority = 2
+        else: # No convergió o no cumple criterios
+            continue
+
+        # Lógica de selección
+        if current_priority < best_method_priority: # Un método de mayor prioridad encontrado
+            best_method_priority = current_priority
+            min_iterations = iterations
+            min_error_at_min_iterations = final_error
+            best_method_name = name
+        elif current_priority == best_method_priority: # Misma prioridad, comparar iteraciones
             if iterations < min_iterations:
                 min_iterations = iterations
+                min_error_at_min_iterations = final_error
                 best_method_name = name
-        # Segunda prioridad: Solo convergió por tolerancia (pero ρ(T) >= 1)
-        elif converged_by_tol and best_method_name is None: # Solo si no hay uno "mejor" aún
-             if iterations < min_iterations:
-                min_iterations = iterations
-                best_method_name = name # Podría ser sobreescrito por uno con rho<1
+            elif iterations == min_iterations: # Empate en iteraciones, comparar error
+                if final_error < min_error_at_min_iterations:
+                    min_error_at_min_iterations = final_error
+                    best_method_name = name
+                    # min_iterations no cambia porque es un empate
     
     return best_method_name, min_iterations if best_method_name else None
-
 
 def compare_methods_ch2_view(request):
     form = MatrixMethodForm(request.POST or None)

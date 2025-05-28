@@ -5,6 +5,7 @@ from .forms import NumericalMethodForm
 from . import methods as chapter1_methods
 from core.utils.functions import parse_function, get_derivatives
 import numpy as np
+import sympy
 from xhtml2pdf import pisa 
 import io 
 import json
@@ -51,7 +52,7 @@ def chapter_one_view(request):
                     results, message = chapter1_methods.regla_falsa(f, x0, x1, tol, niter)
                 elif method == 'punto_fijo':
                     if not g: raise ValueError("Función g(x) no definida para Punto Fijo.")
-                    results, message = chapter1_methods.punto_fijo(g, x0, tol, niter)
+                    results, message = chapter1_methods.punto_fijo(f, g, x0, tol, niter)
                 elif method == 'newton':
                     results, message = chapter1_methods.newton(f, f_prime, x0, tol, niter)
                 elif method == 'secante':
@@ -64,27 +65,33 @@ def chapter_one_view(request):
                 formatted_results = []
 
                 for row in results:
+                    # --- INICIO DEL BLOQUE INDENTADO ---
                     new_row = row.copy()
-                    new_row['f_xm'] = new_row.pop('f(xm)', np.nan)  # Renombrar clave si existe
-
-                    # Renombrar otras claves si vienen con nombres distintos
+                    new_row['f_xm'] = new_row.pop('f(xn)', new_row.pop('f(xm)', np.nan)) # Ajustado para buscar f(xn) primero
+                    
+                    # Renombrar 'Error' si es necesario
                     if 'Error' not in new_row and 'E' in new_row:
                         new_row['Error'] = new_row.pop('E')
+                    
+                    # Asegurarse que 'Error' exista si es necesario (ej. si usas .pop('Error'))
+                    if 'Error' not in new_row:
+                        new_row['Error'] = np.nan # o None, o lo que corresponda
 
                     # Formatear cada campo
                     for k, v in new_row.items():
                         if isinstance(v, float):
                             if np.isnan(v):
                                 new_row[k] = '---'
-                            elif k in ('f_xm', 'Error'):  # Mostrar en notación científica
+                            # Ajusta las claves según las que devuelven tus métodos (f_xm, Error, etc.)
+                            elif k in ('f_xm', 'Error', 'f(xn)'):  # Mostrar en notación científica
                                 new_row[k] = "{:.3e}".format(v)
-                            else:  # Mostrar con 10 decimales para xi, xs, xm
-                                new_row[k] = "{:.11e}".format(v)
+                            else:  # Mostrar con 10 decimales (usar 10f, no 11e)
+                                new_row[k] = "{:.10f}".format(v) # Corregido: .10f o .11f si prefieres
                         elif v is None:
                             new_row[k] = '---'
 
-                    formatted_results.append(new_row)
-
+                    formatted_results.append(new_row) # <--- ¡ASEGÚRATE DE QUE ESTÁ DENTRO DEL BUCLE!
+                    # --- FIN DEL BLOQUE INDENTADO ---
                 context['results'] = formatted_results
 
 
@@ -136,7 +143,7 @@ def run_all_methods(data):
     
     # --- Añadir Punto Fijo si es posible ---
     if g:
-        methods_to_run['Punto Fijo'] = (chapter1_methods.punto_fijo, (g, x0, tol, niter))
+        methods_to_run['Punto Fijo'] = (chapter1_methods.punto_fijo, (f, g, x0, tol, niter))
     elif 'Punto Fijo' not in all_results: # Si no hubo error pero g no está, añadir mensaje
          all_results['Punto Fijo'] = {'results': [], 'message': "g(x) no proporcionado.", 'iterations': 0, 'success': False, 'error': np.inf, 'root': np.nan}
     # --- Fin Añadir Punto Fijo ---
@@ -185,19 +192,42 @@ def run_all_methods(data):
 
     return all_results
 
-# ... (Las otras vistas: find_best_method, compare_methods_view, etc. se mantienen igual) ...
+
 
 def find_best_method(all_results):
-
-    best_method = None
+    best_method_name = None
     min_iterations = float('inf')
+    min_error_at_min_iterations = float('inf')
 
     for name, data in all_results.items():
-        if data['success'] and data['iterations'] < min_iterations:
-            min_iterations = data['iterations']
-            best_method = name
+        # Asegurarse de que 'iterations' y 'error' existan y sean válidos
+        if not data.get('success'): # Solo considerar métodos exitosos
+            continue
 
-    return best_method, min_iterations if best_method else None
+        current_iterations = data.get('iterations', float('inf'))
+        current_error = data.get('error', float('inf'))
+
+        # Si el error es NaN, trátalo como infinito para que no sea elegido como el mejor
+        if np.isnan(current_error):
+            current_error = float('inf')
+
+        # Criterio 1: Menor número de iteraciones
+        if current_iterations < min_iterations:
+            min_iterations = current_iterations
+            min_error_at_min_iterations = current_error
+            best_method_name = name
+        elif current_iterations == min_iterations:
+            # Criterio 2: Si las iteraciones son iguales, desempatar por menor error
+            if current_error < min_error_at_min_iterations:
+                min_error_at_min_iterations = current_error
+                best_method_name = name
+                # No necesitamos actualizar min_iterations aquí porque ya es el mínimo
+    
+    # Devolver el nombre del mejor método y sus iteraciones (o None si ninguno tuvo éxito)
+    if best_method_name:
+        return best_method_name, min_iterations
+    else:
+        return None, None
 
 def compare_methods_view(request):
 
@@ -272,27 +302,46 @@ def graph_function_view(request):
             context['error'] = f"Error al parsear la función: {error_msg}"
         else:
             try:
-                # Usar paso de 0.1
-                x_values = np.arange(-100, 100.1, 0.1).tolist()
-                x_for_eval = np.array(x_values)
+                
+                # --- MODIFICACIÓN CLAVE PARA PRUEBAS ---
+                if "exp" in function_string.lower() and ("(" in function_string and ")" in function_string): # Heurística simple
+                    print(f"Función exponencial detectada: '{function_string}'. Usando rango reducido para graficar.")
+                    x_values_np = np.arange(-50, 50.1, 0.1) # Rango mucho más pequeño
+                elif "log" in function_string.lower():
+                     print(f"Función logarítmica detectada: '{function_string}'. Usando rango positivo.")
+                     x_values_np = np.arange(-50, 50.1, 0.1) # Rango positivo y acotado
+                else:
+                    # Rango general, quizás también más acotado que -100 a 100
+                    print(f"Función general: '{function_string}'. Usando rango -20 a 20.")
+                    x_values_np = np.arange(-100, 100.1, 0.1)
+
+
+                x_values = x_values_np.tolist()   
                 y_values = []
+                
+                
+                if func is not None:
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        y_raw = func(x_values_np) # Usa el array numpy aquí
 
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    y_raw = func(x_for_eval)
+                    for y_val_single in y_raw: # Itera sobre los elementos del array y_raw
+                        if np.isfinite(y_val_single):
+                            y_values.append(y_val_single)
+                        else:
+                            y_values.append(None) # Python None se convierte a null en JSON
 
-                for y in y_raw:
-                    if np.isfinite(y):
-                        y_values.append(y)
-                    else:
-                        y_values.append(None)
+                    context['plot_data'] = json.dumps({
+                        'x': x_values,
+                        'y': y_values
+                    })
+                    # Imprime para depurar qué se envía al template
+                    # print("Plot Data para el template:", context['plot_data'][:200] + "...")
+                else:
+                    context['error'] = "No se pudo interpretar la función proporcionada."
 
-                context['plot_data'] = json.dumps({
-                    'x': x_values,
-                    'y': y_values
-                })
 
             except Exception as e:
                 context['error'] = f"Error al generar datos para el gráfico: {e}"
+                print(f"Error en graph_function_view al generar datos: {e}") # Imprime error en consola del servidor
 
     return render(request, 'chapterOne/graph.html', context)
-

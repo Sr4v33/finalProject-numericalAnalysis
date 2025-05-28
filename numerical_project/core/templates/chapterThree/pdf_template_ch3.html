@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title|default:"Informe de Comparación de Interpolación" }}</title>
+    <style>
+        @page { size: a4 portrait; margin: 1.5cm; }
+        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 10pt; }
+        h1, h2, h3 { color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
+        h1 { font-size: 18pt; }
+        h2 { font-size: 14pt; }
+        h3 { font-size: 12pt; border-bottom: 1px dotted #eee; }
+        .container { width: 100%; }
+        .alert { padding: 10px; margin-bottom: 15px; border: 1px solid transparent; border-radius: 4px; }
+        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+        .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+        .card { border: 1px solid #ddd; margin-bottom: 15px; padding: 10px; }
+        .card-header { font-weight: bold; background-color: #f5f5f5; padding: 5px; margin: -10px -10px 10px -10px; border-bottom: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 8pt;}
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: left; }
+        th { background-color: #eee; }
+        ul { list-style: none; padding-left: 0; }
+        li { margin-bottom: 5px; }
+        .text-success { color: green; }
+        .text-danger { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ page_title|default:"Informe de Comparación de Métodos de Interpolación" }}</h1>
+
+        {% if error_message %}
+            <div class="alert alert-danger">{{ error_message }}</div>
+        {% endif %}
+
+        {% if comparison_results %}
+            <div class="card">
+                <h3>Parámetros Utilizados</h3>
+                <h5>Puntos de Interpolación:</h5>
+                <ul>
+                    {% for point in points_data_report %}
+                        <li>(X: {{ point.x }}, Y: {{ point.y }})</li>
+                    {% endfor %}
+                </ul>
+                <h5>Punto de Evaluación para Error:</h5>
+                <p>
+                    Se evaluó cada método en X<sub>eval</sub> = {{ x_eval_report }}
+                    (Valor real conocido Y<sub>real</sub> = {{ y_eval_report }})
+                </p>
+            </div>
+
+            {% if best_method %}
+                <div class="alert alert-success">
+                    <strong>Mejor Método Identificado:</strong> {{ best_method.name }}
+                    tuvo el menor error de truncamiento: <strong>{{ best_method.error|floatformat:"2e" }}</strong>.
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    No se pudo determinar un mejor método (posiblemente todos fallaron o el error no fue calculable).
+                </div>
+            {% endif %}
+
+            <h3>Tabla Comparativa de Resultados</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Método</th>
+                        <th style="width: 45%;">Polinomio / Trazador P(x) <br> <span style="font-weight:normal; font-size:7pt;">(Como texto LaTeX)</span></th>
+                        <th>P(x<sub>eval</sub>) <br> <span style="font-weight:normal; font-size:7pt;">(Valor Predicho)</span></th>
+                        <th>Error Absoluto <br> <span style="font-weight:normal; font-size:7pt;">|y<sub>real</sub> - P(x<sub>eval</sub>)|</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in comparison_results %}
+                        <tr {% if best_method and item.name == best_method.name %}class="best-method-highlight"{% endif %}>
+                            <td style="text-align: center;">{{ forloop.counter }}</td>
+                            <td><strong>{{ item.name }}</strong></td>
+                            <td class="poly-string">
+                                {% if item.poly_str == "Error en cálculo" or item.poly_str == "N/A" %}
+                                    <span class="text-danger">{{ item.poly_str }}</span>
+                                {% else %}
+                                    {{ item.poly_str }} {# Muestra el string LaTeX como texto plano #}
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                {% if item.y_predicted == "Error" or item.y_predicted == "Error (NaN)" %}
+                                    <span class="text-danger">{{ item.y_predicted }}</span>
+                                {% else %}
+                                    {{ item.y_predicted }}
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                {% if item.error == "Error" or item.error is Infinity %}
+                                    <span class="text-danger">Error</span>
+                                {% else %}
+                                    {{ item.error|floatformat:"2e" }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif not error_message %}
+            <div class="alert alert-info">
+                No hay resultados de comparación para mostrar. Por favor, genera primero una comparación.
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

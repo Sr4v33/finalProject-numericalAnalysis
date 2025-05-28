@@ -11,6 +11,7 @@ METHOD_CHOICES = [
     ('lagrange', 'Lagrange'),
     ('spline_linear', 'Spline Lineal'),
     ('spline_cubic', 'Spline Cúbico'),
+    ('compare', 'Comparar Todos'), # No necesitas esto si usas el botón
 ]
 
 class PointForm(forms.Form):
@@ -37,8 +38,31 @@ class InterpolationForm(forms.Form):
     method = forms.ChoiceField(
         label='Selecciona el Método:',
         choices=METHOD_CHOICES,
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={
+        'class': 'form-select',
+        'id': 'method-select'
+    }))
+
+    # --- AÑADIR ESTOS CAMPOS ---
+    x_eval = forms.FloatField(
+        label='X para Evaluar Error',
+        required=False, # Hacemos que no sea requerido por defecto
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-sm',
+            'placeholder': 'Valor X conocido',
+            'step': 'any'
+        })
     )
+    y_eval = forms.FloatField(
+        label='F(x) para Evaluar Error',
+        required=False, # Hacemos que no sea requerido por defecto
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-sm',
+            'placeholder': 'Valor Y conocido',
+            'step': 'any'
+        })
+    )
+    # --- FIN AÑADIR ---
 
 
 # Puedes añadir validaciones personalizadas al FormSet si es necesario

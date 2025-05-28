@@ -93,6 +93,14 @@
                     </select>
                 </div>
 
+                <div class="alert alert-info newton-method" role="alert">
+                  No es necesario ingresar la derivada de la función f(x) para el método de Newton. Ya se calculará automáticamente.
+                </div>
+
+                <div class="alert alert-info newton-modificado-method" role="alert">
+                  No es necesario ingresar las derivadas de la función f(x) para el método modificado de Newton. Ya se calcularán automáticamente.
+                </div>
+
                 <div class="alert alert-info comparison-alert" role="alert">
                   Por favor, asegúrate de llenar <strong>todos</strong> los campos (f(x), g(x), Xi/X0 y Xs/X1) para una comparación completa.
                   <br>
@@ -129,20 +137,20 @@
             <h2>Resultados: </h2>
             {% if message %}
                 <div class="alert {% if 'raíz' in message or 'aprox.' in message %}alert-success{% else %}alert-warning{% endif %}" role="alert">
-                    <strong>{{ message }}</strong>
+                    <strong> {{ message }}</strong>
                 </div>
             {% endif %}
 
-            {% if results %}
+            {% if results and form.method.value == 'biseccion' %}
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered text-center">
                         <thead class="table-dark">
                             <tr>
-                                <th>$$Iteración$$</th>
-                                <th>$$xi$$</th>
-                                <th>$$xs$$</th>
-                                <th>$$xm$$</th>
-                                <th>$$f(xm) / g(xn)$$</th>
+                                <th>$$Iteración(i)$$</th>
+                                <th>$$a$$</th>
+                                <th>$$x_m$$</th>
+                                <th>$$b$$</th>
+                                <th>$$f(x_m)$$</th>
                                 <th>$$Error$$</th>
                             </tr>
                         </thead>
@@ -150,17 +158,148 @@
                           {% for row in results %}
                           <tr>
                               <td>$${{ row.Iteración }}$$</td>
-                              <td>$${{ row.xi|floatformat:10|default:"---" }}$$</td> {# Añadido floatformat y default --- #}
-                              <td>$${{ row.xs|floatformat:10|default:"---" }}$$</td> {# Añadido floatformat y default --- #}
-                              <td>$${{ row.xm|floatformat:10|default:"---" }}$$</td> {# Añadido floatformat y default --- #}
-                              <td>$${{ row.f_xm|floatformat:"2e"|default:"---" }}$$</td> {# Formato científico y default --- #}
-                              <td>$${{ row.Error|floatformat:"2e"|default:"---" }}$$</td> {# Formato científico y default --- #}
+                              <td>$${{ row.xi|floatformat:10|default:"---" }}$$</td>
+                              <td>$${{ row.xm|floatformat:10|default:"---" }}$$</td>
+                              <td>$${{ row.xs|floatformat:10|default:"---" }}$$</td>
+                              <td>$${{ row.f_xm|floatformat:"2e"|default:"---" }}$$</td> 
+                              <td>$${{ row.Error|floatformat:"2e"|default:"---" }}$$</td> 
                           </tr>
                           {% endfor %}
                       </tbody>
                     </table>
                 </div>
+
+            {% elif results and form.method.value == 'regla_falsa' %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$$Iteración(i)$$</th>
+                                <th>$$a$$</th>
+                                <th>$$x_m$$</th>
+                                <th>$$b$$</th>
+                                <th>$$f(x_m)$$</th>
+                                <th>$$Error$$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in results %}
+                          <tr>
+                              <td>$${{ row.Iteración }}$$</td>
+                              <td>$${{ row.xi|floatformat:10|default:"---" }}$$</td>
+                              <td>$${{ row.xm|floatformat:10|default:"---" }}$$</td>
+                              <td>$${{ row.xs|floatformat:10|default:"---" }}$$</td>
+                              <td>$${{ row.f_xm|floatformat:"2e"|default:"---" }}$$</td> 
+                              <td>$${{ row.Error|floatformat:"2e"|default:"---" }}$$</td> 
+                          </tr>
+                          {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
+
+
+            {% elif results and form.method.value == 'punto_fijo' %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$$Iteración(i)$$</th>
+                                <th>$$x_i$$</th>
+                                <th>$$g(x_i)$$</th>
+                                <th>$$f(x_i)$$</th>
+                                <th>$$Error$$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in results %}
+                        <tr>
+                            <td>$${{ row.Iteración }}$$</td>
+                            <td>$${{ row.xi|floatformat:10|default:"---" }}$$</td>
+                            <td>$${{ row.xm|floatformat:10|default:"---" }}$$</td>
+                            <td>$${{ row.f_xm|floatformat:"2e"|default:"---" }}$$</td>
+                            <td>$${{ row.Error|floatformat:"2e"|default:"---" }}$$</td>
+                        </tr>
+                          {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
+
+            {% elif results and form.method.value == 'newton' %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$$Iteración(i)$$</th>
+                                <th>$$x_i$$</th>
+                                <th>$$f(x_i)$$</th>
+                                <th>$$Error$$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in results %}
+                        <tr>
+                            <td>$${{ row.Iteración }}$$</td>
+                            <td>$${{ row.xi|floatformat:10|default:"---" }}$$</td>
+                            <td>$${{ row.f_xm|floatformat:"2e"|default:"---" }}$$</td>
+                            <td>$${{ row.Error|floatformat:"2e"|default:"---" }}$$</td>
+                        </tr>
+                          {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
+
+
+            {% elif results and form.method.value == 'secante' %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$$Iteración(i)$$</th>
+                                <th>$$x_i$$</th>
+                                <th>$$f(x_i)$$</th>
+                                <th>$$Error$$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in results %}
+                        <tr>
+                            <td>$${{ row.Iteración }}$$</td>
+                            <td>$${{ row.xi|floatformat:10|default:"---" }}$$</td>
+                            <td>$${{ row.f_xm|floatformat:"2e"|default:"---" }}$$</td>
+                            <td>$${{ row.Error|floatformat:"2e"|default:"---" }}$$</td>
+                        </tr>
+                          {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
+
+            {% elif results and form.method.value == 'newton_modificado' %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$$Iteración(i)$$</th>
+                                <th>$$x_i$$</th>
+                                <th>$$f(x_i)$$</th>
+                                <th>$$Error$$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in results %}
+                        <tr>
+                            <td>$${{ row.Iteración }}$$</td>
+                            <td>$${{ row.xi|floatformat:"3e"|default:"---" }}$$</td>
+                            <td>$${{ row.f_xm|floatformat:"2e"|default:"---" }}$$</td>
+                            <td>$${{ row.Error|floatformat:"2e"|default:"---" }}$$</td>
+                        </tr>
+                          {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
             {% else %}
+
+
+
                 <p class="text-muted">Los resultados se mostrarán aquí.</p>
             {% endif %}
         </div>
@@ -228,8 +367,12 @@
             const label_x0_xi = document.getElementById('label_x0_xi');
             const label_xs_x1 = document.getElementById('label_xs_x1');
             const comparisonAlert = document.querySelector('.comparison-alert');
+            const newtonMethod = document.querySelector('.newton-method');
+            const newtonModificadoMethod = document.querySelector('.newton-modificado-method');
 
             comparisonAlert.style.display = (selectedMethod === 'compare_all') ? 'block' : 'none';
+            newtonMethod.style.display = (selectedMethod === 'newton') ? 'block' : 'none';
+            newtonModificadoMethod.style.display = (selectedMethod === 'newton_modificado') ? 'block' : 'none';
 
             allFields.forEach(field => {
                 const methods = field.getAttribute('data-method').split(' ');
@@ -249,10 +392,12 @@
             });
 
             // Ajustar etiquetas
-            if (selectedMethod === 'secante') { label_x0_xi.textContent = 'X0:'; label_xs_x1.textContent = 'X1:'; } 
-            else if (selectedMethod === 'punto_fijo') { label_x0_xi.textContent = 'X0:'; } 
+            if (selectedMethod === 'secante') { label_x0_xi.textContent = 'Valor inicial X0:'; label_xs_x1.textContent = 'Valor inicial X1:'; } 
+            else if (selectedMethod === 'punto_fijo') { label_x0_xi.textContent = 'Valor inicial X0:'; } 
+            else if (selectedMethod === 'newton') { label_x0_xi.textContent = 'Valor inicial X0:'; }
+            else if (selectedMethod === 'newton_modificado') { label_x0_xi.textContent = 'Valor inicial X0:'; }
             else if (selectedMethod === 'compare_all') { label_x0_xi.textContent = 'Xi / X0:'; label_xs_x1.textContent = 'Xs / X1:'; } 
-            else { label_x0_xi.textContent = 'Xi:'; label_xs_x1.textContent = 'Xs:'; }
+            else { label_x0_xi.textContent = 'Intervalo inferior (a):'; label_xs_x1.textContent = 'Intervalo superior (b):'; }
         });
 
         // --- SCRIPT PARA BOTONES DE GRÁFICO ---

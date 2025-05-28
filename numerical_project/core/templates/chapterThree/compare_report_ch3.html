@@ -1,0 +1,152 @@
+{% extends "core/base_template.html" %} {# Ajusta esto a tu plantilla base #}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Reporte de Comparación" }}{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            try {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false},
+                        {left: "\\(", right: "\\)", display: false}, {left: "\\[", right: "\\]", display: true}
+                    ],
+                    throwOnError: false
+                });
+            } catch (e) { console.error("KaTeX render error:", e); }
+        });
+    </script>
+    <style>
+        .table th, .table td {
+            vertical-align: middle;
+
+        }
+        .best-method-row{
+            color: #28a745; /* Verde para el mejor método */
+            font-weight: bold;
+        }
+
+
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>{{ page_title }}</h1>
+        <a href="{% url 'chapterThree:chapter_three_main' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left-circle"></i> Volver al Formulario
+        </a>
+    </div>
+    <hr>
+
+    {% if error_message %}
+        <div class="alert alert-danger">{{ error_message }}</div>
+    {% endif %}
+
+    {% if comparison_results %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Parámetros Utilizados</h4>
+            </div>
+            <div class="card-body">
+                <h5>Puntos de Interpolación:</h5>
+                <ul>
+                    {% for point in points_data_report %}
+                        <li>(${{ point.x }}$, ${{ point.y }}$)</li>
+                    {% endfor %}
+                </ul>
+                <h5>Punto de Evaluación para Error:</h5>
+                <p>
+                    Se evaluó cada método en $x_{eval} = {{ x_eval_report }}$
+                    (Valor real conocido $y_{real} = {{ y_eval_report }}$)
+                </p>
+            </div>
+        </div>
+
+        {% if best_method %}
+            <div class="alert alert-success" role="alert">
+                <h4 class="alert-heading">Mejor Método Identificado</h4>
+                <p>
+                    El método <strong>{{ best_method.name }}</strong> tuvo el menor error de truncamiento:
+                    <strong>$${{ best_method.error|floatformat:"2e" }}$$</strong>
+                </p>
+            </div>
+
+            <div class="my-4">
+             <a href="{% url 'chapterThree:download_pdf_report' %}" class="btn btn-danger" target="_blank">
+                <i class="bi bi-file-pdf-fill"></i> Descargar Informe en PDF
+            </a>
+        </div>
+        {% else %}
+            <div class="alert alert-warning" role="alert">
+                No se pudo determinar un mejor método basado en el error (posiblemente todos fallaron o no se calcularon errores válidos).
+            </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Tabla Comparativa de Resultados</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>$$ Método $$</th>
+                                <th>$$ Polinomio / Trazador P(x) $$</th>
+                                <th>$$ P(x_{eval}) $$ <br>
+                                    $$ (Valor Predicho) $$</th>
+                                <th>$$ |y_{real} - P(x_{eval})| $$ <br>
+                                    $$ (Error Absoluto) $$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in comparison_results %}
+                                <tr>
+                                    <td {% if best_method and item.name == best_method.name %} class="text-success fw-bold" {% endif %}> 
+                                        $$ {{ item.name }} $$
+                                    </td>
+                                    <td class="poly-display">
+                                        {% if item.poly_str == "Error en cálculo" or item.poly_str == "N/A" %}
+                                            <span class="text-danger">{{ item.poly_str }}</span>
+                                        {% else %}
+                                            $$ {{ item.poly_str }} $$
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.y_predicted == "Error" or item.y_predicted == "Error (NaN)" %}
+                                            <span class="text-danger">{{ item.y_predicted }}</span>
+                                        {% else %}
+                                            $$ {{ item.y_predicted }} $$
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.error == "Error" or item.error == Infinity %}
+                                            <span class="text-danger">Error</span>
+                                        {% else %}
+                                            <span {% if best_method and item.name == best_method.name %}class="text-success fw-bold"{% endif %}>
+                                                $${{ item.error|floatformat:"2e" }}$$
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    {% elif not error_message %}
+        <div class="alert alert-info">
+            No hay resultados de comparación para mostrar. Vuelve al <a href="{% url 'chapterThree:interpolation_main' %}">formulario principal</a>.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
