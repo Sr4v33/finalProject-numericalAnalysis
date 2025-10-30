@@ -1,1 +1,44 @@
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos temporales
+*.log
+*.pot
+*.py~
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Archivos de entorno virtual
 venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Archivos de configuración locales
+*.sqlite3
+db.sqlite3
+*.env
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de IDEs
+.vscode/
+.idea/
+
+# Archivos generados por Django
+/staticfiles/
+media/
+
+# Archivos de compilación PDF/HTML
+*.pdf
+*.html
+
+# Archivos de dependencias
+__pycache__/
