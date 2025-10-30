@@ -1,0 +1,9 @@
+# Framework principal
+Django>=4.0
+
+# Librerías matemáticas y científicas
+numpy>=1.23
+sympy>=1.12
+
+# Para generar PDF desde HTML
+xhtml2pdf>=0.2.8
